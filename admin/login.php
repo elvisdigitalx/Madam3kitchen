@@ -27,25 +27,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $db = Database::getConnection();
 
-            // Check if admin exists; if table is fresh, seed initial admin safely
-            $checkAdmin = $db->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
-            if ($checkAdmin->fetchColumn() == 0) {
-                $hash = hashPassword('admin123');
-                $initStmt = $db->prepare("INSERT INTO users (name, email, phone, password, role) VALUES ('Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', ?, 'admin')");
-                $initStmt->execute([$hash]);
+            // 1. Try checking admins table first
+            $admin = null;
+            try {
+                $aStmt = $db->prepare("SELECT * FROM admins WHERE (email = ? OR username = ? OR phone = ?) AND is_active = 1");
+                $aStmt->execute([$email, $email, $email]);
+                $admin = $aStmt->fetch();
+            } catch (Exception $ex) {
+                // Table fallback
             }
 
-            $stmt = $db->prepare("SELECT * FROM users WHERE (email = ? OR phone = ?) AND role = 'admin'");
-            $stmt->execute([$email, $email]);
-            $admin = $stmt->fetch();
+            // 2. Fallback to users table with role = 'admin'
+            if (!$admin) {
+                $uStmt = $db->prepare("SELECT * FROM users WHERE (email = ? OR phone = ?) AND role = 'admin' AND is_active = 1");
+                $uStmt->execute([$email, $email]);
+                $admin = $uStmt->fetch();
+            }
 
             if ($admin && (verifyPassword($password, $admin['password']) || ($email === 'admin@madam3kitchen.com' && $password === 'admin123'))) {
                 $_SESSION['admin_logged_in'] = true;
                 $_SESSION['admin_id'] = $admin['id'];
-                $_SESSION['admin_name'] = $admin['name'];
+                $_SESSION['admin_name'] = $admin['full_name'] ?? $admin['name'] ?? 'Administrator';
                 $_SESSION['admin_email'] = $admin['email'];
 
-                logAdminActivity($admin['name'], "Admin logged in successfully");
+                // Update last_login
+                try {
+                    $db->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?")->execute([$admin['id']]);
+                } catch (Exception $e) {}
+
+                logAdminActivity($_SESSION['admin_name'], "Admin logged in successfully");
 
                 $redirect = $_SESSION['admin_redirect'] ?? 'index.php';
                 unset($_SESSION['admin_redirect']);

@@ -29,14 +29,14 @@ function getSetting(string $key, string $default = ''): string {
 function setSetting(string $key, string $value): bool {
     try {
         $db = Database::getConnection();
-        $stmt = $db->prepare("INSERT INTO restaurant_settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value");
+        $stmt = $db->prepare("INSERT INTO restaurant_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
         return $stmt->execute([$key, $value]);
     } catch (Exception $e) {
-        // Fallback for MySQL replace
         try {
             $stmt = $db->prepare("REPLACE INTO restaurant_settings (setting_key, setting_value) VALUES (?, ?)");
             return $stmt->execute([$key, $value]);
         } catch (Exception $ex) {
+            error_log("Failed to set setting: " . $ex->getMessage());
             return false;
         }
     }
