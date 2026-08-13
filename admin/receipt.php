@@ -60,7 +60,7 @@ foreach ($items as &$item) {
 
   <div class="receipt-header">
     <h2 style="font-size: 1.35rem; margin-bottom: 0.2rem; font-weight: 900;">MADAM 3 KITCHEN</h2>
-    <div style="font-size: 0.8rem;">Asoro Bus Stop, Ekhuan Road, Benin City</div>
+    <div style="font-size: 0.8rem;">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
     <div style="font-size: 0.8rem;">Tel: <?= RESTAURANT_PHONE_DISPLAY ?></div>
     <div style="font-size: 0.8rem;">WhatsApp: +<?= RESTAURANT_WHATSAPP ?></div>
   </div>

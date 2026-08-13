@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $settingsToSave = [
             'restaurant_name' => sanitize($_POST['restaurant_name'] ?? 'Madam 3 Kitchen'),
             'restaurant_tagline' => sanitize($_POST['restaurant_tagline'] ?? 'Delicious Nigerian Meals, Made With Love'),
-            'restaurant_address' => sanitize($_POST['restaurant_address'] ?? 'Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria'),
+            'restaurant_address' => sanitize($_POST['restaurant_address'] ?? 'No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria'),
             'restaurant_phone' => sanitize($_POST['restaurant_phone'] ?? '+2348030001234'),
             'restaurant_whatsapp' => sanitize($_POST['restaurant_whatsapp'] ?? '2348030001234'),
             'restaurant_email' => sanitize($_POST['restaurant_email'] ?? 'orders@madam3kitchen.com'),
@@ -120,7 +120,7 @@ require_once __DIR__ . '/includes/admin-header.php';
 
       <div class="col-12">
         <label class="form-label">Physical Address</label>
-        <input type="text" name="restaurant_address" class="form-control" value="<?= sanitize(getSetting('restaurant_address', 'Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria')) ?>" required>
+        <input type="text" name="restaurant_address" class="form-control" value="<?= sanitize(getSetting('restaurant_address', 'No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria')) ?>" required>
       </div>
 
       <div class="col-12 col-sm-4">

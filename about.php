@@ -3,7 +3,7 @@
  * Madam 3 Kitchen - About Us Page
  */
 $pageTitle = 'About Us — Madam 3 Kitchen Nigerian Cuisine Benin City';
-$pageDescription = 'Discover the story behind Madam 3 Kitchen, our culinary heritage at Asoro Bus Stop Ekhuan Road Benin City, and our passion for authentic Nigerian food.';
+$pageDescription = 'Discover the story behind Madam 3 Kitchen, our culinary heritage at No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, and our passion for authentic Nigerian food.';
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -28,7 +28,7 @@ require_once __DIR__ . '/includes/header.php';
       <span class="badge badge-primary mb-2">Since Benin City</span>
       <h2 class="mb-3">Delicious Nigerian Meals, Made With Love.</h2>
       <p class="text-muted" style="line-height: 1.7;">
-        Located at the vibrant <strong>Asoro Bus Stop, Ekhuan Road, Benin City</strong>, Madam 3 Kitchen was founded on a simple yet unyielding philosophy: Nigerian food should be rich, authentic, hygienic, and affordable.
+        Located at the vibrant <strong>No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</strong>, Madam 3 Kitchen was founded on a simple yet unyielding philosophy: Nigerian food should be rich, authentic, hygienic, and affordable.
       </p>
       <p class="text-muted" style="line-height: 1.7;">
         Whether you are craving the deep smoky flavor of firewood party Jollof rice, traditional Delta/Edo Banga palm nut soup, velvety pounded yam with assorted meat Egusi soup, or sizzling peppered Asun, our master chefs cook each recipe with age-old secrets and the freshest ingredients sourced daily from local farmers in Edo State.
@@ -78,7 +78,7 @@ require_once __DIR__ . '/includes/header.php';
       <div class="feature-card">
         <div class="feature-icon-wrap">⚡</div>
         <h4>Speedy Delivery</h4>
-        <p class="text-muted fs-sm">Hot insulated delivery across Benin City: Asoro, Ekhuan Road, GRA, Ugbowo, Ring Road, and environs.</p>
+        <p class="text-muted fs-sm">Hot insulated delivery across Benin City: No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, Ring Road, and environs.</p>
       </div>
     </div>
   </div>

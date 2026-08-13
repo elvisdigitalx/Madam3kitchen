@@ -16,7 +16,7 @@
           Welcome to <strong>Madam 3 Kitchen</strong>, your home for authentic Nigerian delicacies in Benin City. From party Jollof rice to traditional soups and tender peppered proteins, we bring the best taste to your doorstep.
         </p>
         <div class="d-flex align-items-center gap-2 mt-3">
-          <span class="badge badge-warning">📍 Asoro Bus Stop, Ekhuan Road</span>
+          <span class="badge badge-warning">📍 No. 3 Asoro Bus Stop, Ekehuan Road</span>
         </div>
       </div>
 
@@ -38,7 +38,7 @@
       <div class="col-6 col-md-3 col-lg-3">
         <h5>Delivery Areas</h5>
         <ul class="footer-links">
-          <li><a href="menu.php">Asoro / Ekhuan Road</a></li>
+          <li><a href="menu.php">No. 3 Asoro / Ekehuan Road</a></li>
           <li><a href="menu.php">GRA & Boundary Rd</a></li>
           <li><a href="menu.php">Ugbowo / UNIBEN</a></li>
           <li><a href="menu.php">Ring Road & City Center</a></li>
@@ -54,7 +54,7 @@
         <h5>Get in Touch</h5>
         <div class="footer-contact-item">
           <span>📍</span>
-          <div>Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria</div>
+          <div>No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria</div>
         </div>
         <div class="footer-contact-item">
           <span>📞</span>

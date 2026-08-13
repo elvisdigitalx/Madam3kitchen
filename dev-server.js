@@ -17,7 +17,7 @@ let db = {
   settings: {
     restaurant_name: "Madam 3 Kitchen",
     restaurant_tagline: "Delicious Nigerian Meals, Made With Love",
-    restaurant_address: "Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria",
+    restaurant_address: "No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria",
     restaurant_phone: "+2348030001234",
     restaurant_whatsapp: "2348030001234",
     restaurant_email: "orders@madam3kitchen.com",
@@ -174,7 +174,7 @@ let db = {
     }
   ],
   delivery_zones: [
-    { id: 1, name: "Asoro / Ekhuan Road", description: "Direct proximity to Madam 3 Kitchen", delivery_fee: 500, estimated_time: "15-25 mins", is_active: 1 },
+    { id: 1, name: "No. 3 Asoro / Ekehuan Road", description: "Direct proximity to Madam 3 Kitchen", delivery_fee: 500, estimated_time: "15-25 mins", is_active: 1 },
     { id: 2, name: "GRA & Boundary Road", description: "Government Reserved Area, Boundary & Country Club environs", delivery_fee: 1000, estimated_time: "25-35 mins", is_active: 1 },
     { id: 3, name: "Ring Road & King Square", description: "Benin City Central Commercial District", delivery_fee: 800, estimated_time: "20-30 mins", is_active: 1 },
     { id: 4, name: "Airport Road & Environs", description: "Airport Road, Akenzua, and surrounding avenues", delivery_fee: 1200, estimated_time: "30-40 mins", is_active: 1 },
@@ -218,7 +218,7 @@ let db = {
   reviews: [
     { id: 1, customer_name: "Osasogie I. (GRA)", rating: 5, comment: "Their party Jollof rice is on another level! The smoky firewood aroma reminds me of authentic Edo wedding celebrations. Delivery to GRA was within 25 minutes.", is_approved: 1 },
     { id: 2, customer_name: "Blessing E. (Ugbowo)", rating: 5, comment: "The Egusi soup with pounded yam was fresh and properly garnished with assorted meat. Delivered hot to UNIBEN gate. 10/10!", is_approved: 1 },
-    { id: 3, customer_name: "Efe Collins (Airport Rd)", rating: 5, comment: "The peppered chicken is seriously spicy and tasty! Perfect with chilled Chapman. Best food plug on Ekhuan Road.", is_approved: 1 },
+    { id: 3, customer_name: "Efe Collins (Airport Rd)", rating: 5, comment: "The peppered chicken is seriously spicy and tasty! Perfect with chilled Chapman. Best food plug on Ekehuan Road.", is_approved: 1 },
     { id: 4, customer_name: "Dr. Endurance (Asoro)", rating: 5, comment: "Living right by Asoro bus stop, Madam 3 Kitchen has become our family weekend ritual. Very clean packaging.", is_approved: 1 }
   ],
   contact_messages: [
@@ -384,7 +384,7 @@ function handleApi(req, res, pathname, query) {
             delivery_address: input.address,
             landmark: input.landmark || '',
             delivery_zone_id: zone ? zone.id : 1,
-            zone_name: zone ? zone.name : 'Asoro / Ekhuan Road',
+            zone_name: zone ? zone.name : 'No. 3 Asoro / Ekehuan Road',
             order_timing: input.order_timing || 'asap',
             scheduled_date: input.scheduled_date || null,
             scheduled_time: input.scheduled_time || null,
@@ -594,7 +594,7 @@ function handlePage(req, res, pathname, query) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <title>${title} — Madam 3 Kitchen Benin City</title>
-  <meta name="description" content="Delicious Nigerian meals freshly prepared with love in Benin City. Fast delivery across Asoro, Ekhuan Road, GRA, Ugbowo, and environs. Order online today!">
+  <meta name="description" content="Delicious Nigerian meals freshly prepared with love in Benin City. Fast delivery across No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, and environs. Order online today!">
   <meta name="theme-color" content="#FF6B00">
   <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
   <link rel="stylesheet" href="/assets/css/styles.css">
@@ -605,7 +605,7 @@ function handlePage(req, res, pathname, query) {
   <div class="top-notice-bar">
     <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <span>📍 Asoro Bus Stop, Ekhuan Road, Benin City, Edo State</span>
+        <span>📍 No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</span>
         <span class="d-none d-md-inline ms-3">🕒 Daily: 8:00 AM – 10:00 PM</span>
       </div>
       <div class="d-flex align-items-center gap-3">
@@ -663,7 +663,7 @@ function handlePage(req, res, pathname, query) {
     <div class="mt-auto pt-3 border-top">
       <a href="/login.php" class="btn btn-primary w-100 mb-2">Sign In</a>
       <a href="/register.php" class="btn btn-outline-secondary w-100">Create Account</a>
-      <div class="mt-3 text-center fs-xs text-muted">Asoro Bus Stop, Ekhuan Rd, Benin City</div>
+      <div class="mt-3 text-center fs-xs text-muted">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
     </div>
   </div>
 
@@ -681,7 +681,7 @@ function handlePage(req, res, pathname, query) {
             Welcome to <strong>Madam 3 Kitchen</strong>, your home for authentic Nigerian delicacies in Benin City. From party Jollof rice to traditional soups and tender peppered proteins, we bring the best taste to your doorstep.
           </p>
           <div class="d-flex align-items-center gap-2 mt-3">
-            <span class="badge badge-warning">📍 Asoro Bus Stop, Ekhuan Road</span>
+            <span class="badge badge-warning">📍 No. 3 Asoro Bus Stop, Ekehuan Road</span>
           </div>
         </div>
 
@@ -701,7 +701,7 @@ function handlePage(req, res, pathname, query) {
         <div class="col-6 col-md-3 col-lg-3">
           <h5>Delivery Areas</h5>
           <ul class="footer-links">
-            <li><a href="/menu.php">Asoro / Ekhuan Road</a></li>
+            <li><a href="/menu.php">No. 3 Asoro / Ekehuan Road</a></li>
             <li><a href="/menu.php">GRA & Boundary Rd</a></li>
             <li><a href="/menu.php">Ugbowo / UNIBEN</a></li>
             <li><a href="/menu.php">Ring Road & Center</a></li>
@@ -714,7 +714,7 @@ function handlePage(req, res, pathname, query) {
         <div class="col-12 col-md-6 col-lg-3">
           <h5>Get in Touch</h5>
           <div class="footer-contact-item">
-            <span>📍</span><div>Asoro Bus Stop, Ekhuan Road, Benin City, Edo State</div>
+            <span>📍</span><div>No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</div>
           </div>
           <div class="footer-contact-item">
             <span>📞</span><div><a href="tel:+2348030001234" style="color: inherit;">0803 000 1234</a></div>
@@ -844,7 +844,7 @@ function handlePage(req, res, pathname, query) {
               <div class="hero-location-icon">📍</div>
               <div>
                 <div class="fw-bold fs-sm text-secondary">Our Kitchen Location</div>
-                <div class="fs-xs text-muted">Asoro Bus Stop, Ekhuan Road, Benin City, Edo State</div>
+                <div class="fs-xs text-muted">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</div>
               </div>
             </div>
           </div>
@@ -914,7 +914,7 @@ function handlePage(req, res, pathname, query) {
         <div class="row g-4">
           <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">🍲</div><h4>Freshly Prepared</h4><p class="text-muted fs-sm">Every order is cooked fresh upon receipt with authentic ingredients and zero artificial preservatives.</p></div></div>
           <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">🇳🇬</div><h4>Authentic Nigerian Taste</h4><p class="text-muted fs-sm">Rich party Jollof, traditional Edo Banga soup, silky Amala, and spicy Asun seasoned to perfection.</p></div></div>
-          <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">⚡</div><h4>Fast Benin Delivery</h4><p class="text-muted fs-sm">Prompt dispatch to Asoro, Ekhuan Road, GRA, Ugbowo, Ring Road, and beyond in insulated heat bags.</p></div></div>
+          <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">⚡</div><h4>Fast Benin Delivery</h4><p class="text-muted fs-sm">Prompt dispatch to No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, Ring Road, and beyond in insulated heat bags.</p></div></div>
           <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">💰</div><h4>Affordable Prices</h4><p class="text-muted fs-sm">Generous portion sizes and executive lunch combos at wallet-friendly prices for everyone.</p></div></div>
           <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">🧼</div><h4>Hygienic Preparation</h4><p class="text-muted fs-sm">Strict sanitary standards, spotless kitchen facilities, and tamper-evident food packaging.</p></div></div>
           <div class="col-12 col-sm-6 col-lg-4"><div class="feature-card"><div class="feature-icon-wrap">📱</div><h4>Easy Online Ordering</h4><p class="text-muted fs-sm">Order in under 2 minutes from any phone, pay online or bank transfer, and track live updates.</p></div></div>
@@ -974,14 +974,14 @@ function handlePage(req, res, pathname, query) {
             <div class="col-12 col-lg-5">
               <span class="badge badge-warning mb-3">📍 Visit Us</span>
               <h2 class="text-white mb-3">Madam 3 Kitchen in Benin City</h2>
-              <p style="color: #D7CCC8;">Conveniently located at <strong>Asoro Bus Stop, Ekhuan Road</strong>. Dine in or order fast delivery to your residence, office, or event venue anywhere in Benin City.</p>
+              <p style="color: #D7CCC8;">Conveniently located at <strong>No. 3 Asoro Bus Stop, Ekehuan Road</strong>. Dine in or order fast delivery to your residence, office, or event venue anywhere in Benin City.</p>
               <div class="d-flex flex-column gap-2 mb-4" style="color: #FFF8F0; font-size: 0.95rem;">
-                <div>🏢 <strong>Address:</strong> Asoro Bus Stop, Ekhuan Road, Benin City</div>
+                <div>🏢 <strong>Address:</strong> No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
                 <div>📞 <strong>Phone:</strong> <a href="tel:+2348030001234" style="color: var(--accent);">0803 000 1234</a></div>
                 <div>🕒 <strong>Opening Hours:</strong> Monday – Sunday: 8:00 AM – 10:00 PM</div>
               </div>
               <div class="d-flex gap-3">
-                <a href="https://maps.google.com/?q=Asoro+Bus+Stop+Ekhuan+Road+Benin+City" target="_blank" class="btn btn-primary">🗺️ Get Directions</a>
+                <a href="https://maps.google.com/?q=No.+3+Asoro+Bus+Stop+Ekehuan+Road+Benin+City" target="_blank" class="btn btn-primary">🗺️ Get Directions</a>
                 <a href="/menu.php" class="btn btn-outline-secondary text-white border-white">Order Online</a>
               </div>
             </div>
@@ -1081,7 +1081,7 @@ function handlePage(req, res, pathname, query) {
         <div class="container py-5">
           <div class="card p-4 p-md-5 shadow-sm max-w-900 mx-auto">
             <h2 class="mb-3 text-secondary">${targetPhpFile}</h2>
-            <p class="text-muted">Madam 3 Kitchen — Asoro Bus Stop, Ekhuan Road, Benin City, Edo State.</p>
+            <p class="text-muted">Madam 3 Kitchen — No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State.</p>
             <div class="d-flex gap-2 mt-4">
               <a href="/index.php" class="btn btn-primary">Home</a>
               <a href="/menu.php" class="btn btn-outline-secondary">Browse Menu</a>
@@ -1107,6 +1107,6 @@ function handlePage(req, res, pathname, query) {
 server.listen(PORT, HOST, () => {
   console.log(`=======================================================`);
   console.log(`🍽️  Madam 3 Kitchen Dev Server Running on http://${HOST}:${PORT}`);
-  console.log(`📍  Location: Asoro Bus Stop, Ekhuan Road, Benin City`);
+  console.log(`📍  Location: No. 3 Asoro Bus Stop, Ekehuan Road, Benin City`);
   console.log(`=======================================================`);
 });

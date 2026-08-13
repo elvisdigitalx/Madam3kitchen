@@ -1,7 +1,7 @@
 <?php
 /**
  * Madam 3 Kitchen - Database Connection (MariaDB / MySQL PDO)
- * Location: Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria
+ * Location: No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria
  */
 
 require_once __DIR__ . '/config.php';

@@ -57,7 +57,7 @@ $deliveryZones = $zoneStmt->fetchAll();
               </option>
             <?php endforeach; ?>
           </select>
-          <small class="text-muted fs-xs">Asoro, Ekhuan Rd, GRA, Ugbowo, Ring Rd, etc.</small>
+          <small class="text-muted fs-xs">No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, Ring Rd, etc.</small>
         </div>
 
         <hr class="my-3">

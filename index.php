@@ -57,7 +57,7 @@ $reviews = $revStmt->fetchAll();
           </div>
           <div>
             <div class="fw-bold fs-sm text-secondary">Our Kitchen Location</div>
-            <div class="fs-xs text-muted">Asoro Bus Stop, Ekhuan Road, Benin City, Edo State</div>
+            <div class="fs-xs text-muted">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</div>
           </div>
         </div>
       </div>
@@ -246,7 +246,7 @@ $reviews = $revStmt->fetchAll();
         <div class="feature-card">
           <div class="feature-icon-wrap">⚡</div>
           <h4>Fast Benin Delivery</h4>
-          <p class="text-muted fs-sm">Prompt dispatch to Asoro, Ekhuan Road, GRA, Ugbowo, Ring Road, and beyond in insulated heat bags.</p>
+          <p class="text-muted fs-sm">Prompt dispatch to No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, Ring Road, and beyond in insulated heat bags.</p>
         </div>
       </div>
 
@@ -375,17 +375,17 @@ $reviews = $revStmt->fetchAll();
           <span class="badge badge-warning mb-3">📍 Visit Us</span>
           <h2 class="text-white mb-3">Madam 3 Kitchen in Benin City</h2>
           <p style="color: #D7CCC8;">
-            Conveniently located at <strong>Asoro Bus Stop, Ekhuan Road</strong>. Dine in with family or order delivery to your residence, office, or event venue anywhere in Benin City.
+            Conveniently located at <strong>No. 3 Asoro Bus Stop, Ekehuan Road</strong>. Dine in with family or order delivery to your residence, office, or event venue anywhere in Benin City.
           </p>
 
           <div class="d-flex flex-column gap-2 mb-4" style="color: #FFF8F0; font-size: 0.95rem;">
-            <div>🏢 <strong>Address:</strong> Asoro Bus Stop, Ekhuan Road, Benin City</div>
+            <div>🏢 <strong>Address:</strong> No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
             <div>📞 <strong>Phone:</strong> <a href="tel:<?= RESTAURANT_PHONE ?>" style="color: var(--accent);"><?= RESTAURANT_PHONE_DISPLAY ?></a></div>
             <div>🕒 <strong>Opening Hours:</strong> Monday – Sunday: 8:00 AM – 10:00 PM</div>
           </div>
 
           <div class="d-flex gap-3">
-            <a href="https://maps.google.com/?q=Asoro+Bus+Stop+Ekhuan+Road+Benin+City" target="_blank" class="btn btn-primary">
+            <a href="https://maps.google.com/?q=No.+3+Asoro+Bus+Stop+Ekehuan+Road+Benin+City" target="_blank" class="btn btn-primary">
               🗺️ Get Directions
             </a>
             <a href="menu.php" class="btn btn-outline-secondary text-white border-white">

@@ -1,6 +1,6 @@
 -- ====================================================================
 -- MADAM 3 KITCHEN — PRODUCTION MARIADB / MYSQL DATABASE SCHEMA & SEED
--- Location: Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria
+-- Location: No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria
 -- Target: MariaDB 10.4+ / MySQL 8.0+
 -- Storage Engine: InnoDB
 -- Character Set: utf8mb4
@@ -482,7 +482,7 @@ INSERT INTO `product_extras` (`id`, `product_id`, `name`, `price`, `is_active`) 
 
 -- 4. Delivery Zones in Benin City
 INSERT INTO `delivery_zones` (`id`, `name`, `description`, `delivery_fee`, `estimated_time`, `is_active`) VALUES
-(1, 'Asoro / Ekhuan Road', 'Direct proximity to Madam 3 Kitchen', 500.00, '15-25 mins', 1),
+(1, 'No. 3 Asoro / Ekehuan Road', 'Direct proximity to Madam 3 Kitchen', 500.00, '15-25 mins', 1),
 (2, 'GRA & Boundary Road', 'Government Reserved Area, Boundary & Country Club environs', 1000.00, '25-35 mins', 1),
 (3, 'Ring Road & King Square', 'Benin City Central Commercial District', 800.00, '20-30 mins', 1),
 (4, 'Airport Road & Environs', 'Airport Road, Akenzua, and surrounding avenues', 1200.00, '30-40 mins', 1),
@@ -505,14 +505,14 @@ INSERT INTO `admins` (`id`, `username`, `full_name`, `email`, `phone`, `password
 (1, 'admin', 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', 'superadmin', 1);
 
 INSERT INTO `users` (`id`, `name`, `email`, `phone`, `whatsapp`, `password`, `address`, `landmark`, `delivery_zone_id`, `role`, `is_active`) VALUES
-(1, 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '2348030001234', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', 'Asoro Bus Stop, Ekhuan Road', 'Near Asoro Statue', 1, 'admin', 1),
+(1, 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '2348030001234', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', 'No. 3 Asoro Bus Stop, Ekehuan Road', 'Near Asoro Statue', 1, 'admin', 1),
 (2, 'Osasogie Igbinosa', 'osas@example.com', '08051234567', '2348051234567', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', '14 Boundary Road, GRA, Benin City', 'Opposite Golf Club', 2, 'customer', 1);
 
 -- 7. Restaurant Settings
 INSERT INTO `restaurant_settings` (`setting_key`, `setting_value`) VALUES
 ('restaurant_name', 'Madam 3 Kitchen'),
 ('restaurant_tagline', 'Delicious Nigerian Meals, Made With Love'),
-('restaurant_address', 'Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria'),
+('restaurant_address', 'No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria'),
 ('restaurant_phone', '+2348030001234'),
 ('restaurant_whatsapp', '2348030001234'),
 ('restaurant_email', 'orders@madam3kitchen.com'),
@@ -536,7 +536,7 @@ INSERT INTO `restaurant_settings` (`setting_key`, `setting_value`) VALUES
 INSERT INTO `reviews` (`id`, `order_id`, `product_id`, `customer_name`, `rating`, `comment`, `is_approved`) VALUES
 (1, NULL, 1, 'Osasogie I. (GRA, Benin City)', 5, 'Their party Jollof rice is on another level! The smoky aroma reminds me of authentic Edo wedding celebrations. Delivery to GRA took only 25 minutes.', 1),
 (2, NULL, 2, 'Blessing E. (Ugbowo)', 5, 'The Egusi soup with pounded yam was so fresh and properly garnished with assorted meat. Delivered hot to UNIBEN gate. Madam 3 Kitchen is 10/10!', 1),
-(3, NULL, 5, 'Efe Collins (Airport Road)', 5, 'The peppered chicken is seriously spicy and tasty! Perfect accompaniment with cold Chapman. Best food plug on Ekhuan Road.', 1),
+(3, NULL, 5, 'Efe Collins (Airport Road)', 5, 'The peppered chicken is seriously spicy and tasty! Perfect accompaniment with cold Chapman. Best food plug on Ekehuan Road.', 1),
 (4, NULL, 7, 'Dr. Endurance (Asoro)', 5, 'Living right by Asoro bus stop, Madam 3 Kitchen has become my family lunch routine. Clean packaging and friendly dispatch riders.', 1);
 
 -- 9. Sample Orders & Items

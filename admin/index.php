@@ -43,7 +43,7 @@ $topDishes = $db->query("SELECT product_name, SUM(quantity) as total_qty, SUM(su
     <span style="font-size: 1.5rem;"><?= isRestaurantOpen() ? '🟢' : '🔴' ?></span>
     <div>
       <h4 class="h6 mb-0 text-white fw-bold">Restaurant is Currently: <?= isRestaurantOpen() ? 'OPEN FOR ORDERS' : 'CLOSED' ?></h4>
-      <div class="fs-xs opacity-75">Operating Hours: 8:00 AM – 10:00 PM • Asoro Bus Stop, Ekhuan Road, Benin City</div>
+      <div class="fs-xs opacity-75">Operating Hours: 8:00 AM – 10:00 PM • No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
     </div>
   </div>
   <a href="settings.php" class="btn btn-light btn-sm text-dark fw-bold">⚙️ Adjust Kitchen Status</a>
@@ -216,7 +216,7 @@ $topDishes = $db->query("SELECT product_name, SUM(quantity) as total_qty, SUM(su
     <div class="card shadow-sm p-4">
       <h3 class="h5 fw-extrabold text-secondary mb-3">Kitchen Quick Info</h3>
       <div class="d-flex flex-column gap-2 fs-sm">
-        <div><strong>Location:</strong> Asoro Bus Stop, Ekhuan Road, Benin City</div>
+        <div><strong>Location:</strong> No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
         <div><strong>Phone:</strong> <?= RESTAURANT_PHONE_DISPLAY ?></div>
         <div><strong>Menu Items:</strong> <?= $totalProducts ?> Active Dishes</div>
         <div><strong>Registered Customers:</strong> <?= $totalCustomers ?> Foodies</div>

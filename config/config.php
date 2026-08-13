@@ -2,7 +2,7 @@
 /**
  * Madam 3 Kitchen - Core Configuration
  * Authentic Nigerian Food Ordering System
- * Location: Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria
+ * Location: No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria
  */
 
 // Strict error reporting for debugging, sanitized for production
@@ -24,7 +24,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Brand & Restaurant Constants
 define('APP_NAME', 'Madam 3 Kitchen');
 define('APP_TAGLINE', 'Delicious Nigerian Meals, Made With Love');
-define('RESTAURANT_ADDRESS', 'Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria');
+define('RESTAURANT_ADDRESS', 'No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria');
 define('RESTAURANT_PHONE', '+2348030001234');
 define('RESTAURANT_PHONE_DISPLAY', '0803 000 1234');
 define('RESTAURANT_WHATSAPP', '2348030001234');

@@ -18,12 +18,12 @@ require_once __DIR__ . '/includes/header.php';
   <div class="d-flex flex-column gap-3">
     <div class="card p-4 shadow-sm">
       <h4 class="fs-base fw-bold text-secondary mb-2">📍 Where is Madam 3 Kitchen located?</h4>
-      <p class="text-muted fs-sm mb-0">Our kitchen and restaurant is located at <strong>Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria</strong>. We offer both dine-in and fast doorstep delivery.</p>
+      <p class="text-muted fs-sm mb-0">Our kitchen and restaurant is located at <strong>No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria</strong>. We offer both dine-in and fast doorstep delivery.</p>
     </div>
 
     <div class="card p-4 shadow-sm">
       <h4 class="fs-base fw-bold text-secondary mb-2">🛵 Which areas in Benin City do you deliver to?</h4>
-      <p class="text-muted fs-sm mb-0">We deliver across Asoro, Ekhuan Road, GRA, Boundary Road, Ring Road, King Square, Airport Road, Ugbowo (UNIBEN Campus), Sapele Road, Ikpoba Hill, New Benin, Aduwawa, and Upper Sakponba.</p>
+      <p class="text-muted fs-sm mb-0">We deliver across No. 3 Asoro, Ekehuan Road, GRA, Boundary Road, Ring Road, King Square, Airport Road, Ugbowo (UNIBEN Campus), Sapele Road, Ikpoba Hill, New Benin, Aduwawa, and Upper Sakponba.</p>
     </div>
 
     <div class="card p-4 shadow-sm">

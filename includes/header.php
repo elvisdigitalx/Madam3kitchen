@@ -8,7 +8,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/functions.php';
 
 $pageTitle = $pageTitle ?? 'Madam 3 Kitchen — Authentic Nigerian Restaurant & Food Delivery in Benin City';
-$pageDescription = $pageDescription ?? 'Delicious Nigerian meals freshly prepared with love in Benin City. Fast delivery across Asoro, Ekhuan Road, GRA, Ugbowo, and environs. Order online today!';
+$pageDescription = $pageDescription ?? 'Delicious Nigerian meals freshly prepared with love in Benin City. Fast delivery across No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, and environs. Order online today!';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,7 +17,7 @@ $pageDescription = $pageDescription ?? 'Delicious Nigerian meals freshly prepare
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <title><?= sanitize($pageTitle) ?></title>
   <meta name="description" content="<?= sanitize($pageDescription) ?>">
-  <meta name="keywords" content="Madam 3 Kitchen, Nigerian food Benin City, food delivery Benin City, Jollof rice Benin City, Egusi soup, Asoro bus stop, Ekhuan Road, Edo state restaurant">
+  <meta name="keywords" content="Madam 3 Kitchen, Nigerian food Benin City, food delivery Benin City, Jollof rice Benin City, Egusi soup, No. 3 Asoro Bus Stop, Ekehuan Road, Edo state restaurant">
   <meta name="author" content="Madam 3 Kitchen">
   <meta name="theme-color" content="#FF6B00">
 
@@ -37,7 +37,7 @@ $pageDescription = $pageDescription ?? 'Delicious Nigerian meals freshly prepare
     "image": "<?= BASE_URL ?>/assets/images/hero-banner.jpg",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Asoro Bus Stop, Ekhuan Road",
+      "streetAddress": "No. 3 Asoro Bus Stop, Ekehuan Road",
       "addressLocality": "Benin City",
       "addressRegion": "Edo State",
       "addressCountry": "NG"

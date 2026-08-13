@@ -10,7 +10,7 @@ $isOpen = isRestaurantOpen();
 <div class="top-notice-bar">
   <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-      <span>📍 Asoro Bus Stop, Ekhuan Road, Benin City, Edo State</span>
+      <span>📍 No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</span>
       <span class="d-none d-md-inline ms-3">🕒 Daily: 8:00 AM – 10:00 PM</span>
     </div>
     <div class="d-flex align-items-center gap-3">
@@ -101,7 +101,7 @@ $isOpen = isRestaurantOpen();
     <?php endif; ?>
 
     <div class="mt-3 text-center fs-xs text-muted">
-      Asoro Bus Stop, Ekhuan Rd, Benin City
+      No. 3 Asoro Bus Stop, Ekehuan Road, Benin City
     </div>
   </div>
 </div>

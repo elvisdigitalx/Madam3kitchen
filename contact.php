@@ -3,7 +3,7 @@
  * Madam 3 Kitchen - Contact & Location Page
  */
 $pageTitle = 'Contact Us — Madam 3 Kitchen Benin City';
-$pageDescription = 'Get in touch with Madam 3 Kitchen at Asoro Bus Stop, Ekhuan Road, Benin City. Call, WhatsApp, or visit us today.';
+$pageDescription = 'Get in touch with Madam 3 Kitchen at No. 3 Asoro Bus Stop, Ekehuan Road, Benin City. Call, WhatsApp, or visit us today.';
 require_once __DIR__ . '/includes/header.php';
 
 $successMessage = '';
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="hero-location-icon">📍</div>
           <div>
             <div class="fw-bold">Address</div>
-            <div class="text-muted fs-sm">Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria</div>
+            <div class="text-muted fs-sm">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria</div>
           </div>
         </div>
 

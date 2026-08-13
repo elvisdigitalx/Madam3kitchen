@@ -1,6 +1,6 @@
 # MADAM 3 KITCHEN — Complete Food Ordering & Restaurant Management Web Application
 
-> **Location:** Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria  
+> **Location:** No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria  
 > **Brand Tagline:** *Delicious Nigerian Meals, Made With Love.*  
 > **Tech Stack:** PHP 8+, MySQL/MariaDB (InnoDB UTF8MB4), PDO Prepared Statements, Modern Mobile-First CSS3, JavaScript, AJAX/Fetch API.
 
@@ -12,7 +12,7 @@
 
 - **Mobile-First Experience:** Tailored for Android phones with bottom navigation bar, floating WhatsApp support button, touch-friendly meal customizers (+/- quantity, protein options, extra sides), and lightning-fast loading.
 - **Dynamic Nigerian Culinary Menu:** Real-time search, category filters (Rice Dishes, Soups, Swallow, Proteins & Grills, Snacks, Drinks, Combos, Family Packs), sorting by popularity, price, and date.
-- **Benin City Delivery Zone Matrix:** Fully database-driven delivery zones with custom fees and delivery times (Asoro, Ekhuan Road, GRA, Ugbowo/UNIBEN, Ring Road, Sapele Road, Airport Road, Ikpoba Hill, New Benin, Aduwawa, Upper Sakponba).
+- **Benin City Delivery Zone Matrix:** Fully database-driven delivery zones with custom fees and delivery times (No. 3 Asoro, Ekehuan Road, GRA, Ugbowo/UNIBEN, Ring Road, Sapele Road, Airport Road, Ikpoba Hill, New Benin, Aduwawa, Upper Sakponba).
 - **Payment & Verification Architecture:** Paystack online payment gateway, direct Moniepoint bank transfer with remarks, and Cash on Delivery (COD).
 - **Live 7-Step Visual Order Tracking:** Real-time visual progress timeline from *Order Received* to *Delivered*, with pre-filled WhatsApp notifications.
 - **Comprehensive Admin Control Dashboard:** Today's orders, today's revenue (₦), pending orders badge, real-time incoming order sound chimes (Web Audio API), status change history audit logs, menu & extras editor, promo code engine, financial reports with CSV export, and printable thermal kitchen receipts.
@@ -169,7 +169,7 @@ define('DB_PASS', 'your_secure_password');
 ---
 
 ## 📞 Restaurant Contact & Location
-- **Address:** Madam 3 Kitchen, Asoro Bus Stop, Ekhuan Road, Benin City, Edo State, Nigeria
+- **Address:** Madam 3 Kitchen, No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria
 - **Phone:** +234 803 000 1234
 - **WhatsApp:** +234 803 000 1234
 - **Email:** orders@madam3kitchen.com
