@@ -1,0 +1,17 @@
+{
+  "name": "Madam 3 Kitchen Benin",
+  "short_name": "Madam 3",
+  "description": "Authentic Nigerian Food Ordering & Delivery in Benin City",
+  "start_url": "/index.php",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FF6B00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/images/logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
