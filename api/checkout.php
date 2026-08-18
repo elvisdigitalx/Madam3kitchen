@@ -116,7 +116,7 @@ try {
                 continue;
             }
 
-            $unitPrice = floatval($product['discount_price'] ?: $product['price']);
+            $unitPrice = ($product['discount_price'] !== null && $product['discount_price'] > 0) ? floatval($product['discount_price']) : floatval($product['price']);
             $itemExtras = $item['extras'] ?? [];
             $extrasSubtotal = 0;
             $verifiedExtras = [];

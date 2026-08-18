@@ -347,9 +347,18 @@ function statusSelect(current, orderId, wide) {
 }
 
 // Helper: Format Price
+function currencySymbol() {
+  const sym = (db.settings && db.settings.currency_symbol) || '₦';
+  // If the configured symbol is empty or only ASCII digits (a corrupted Naira
+  // sign mangled into e.g. "262145"), fall back to a clean Naira sign.
+  const s = String(sym).trim();
+  if (s !== '' && !/^[0-9]+$/.test(s)) return s;
+  return '₦';
+}
+
 function formatPrice(amount) {
-  const num = parseFloat(amount) || 0;
-  return '₦' + num.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const num = parseFloat(String(amount).replace(/[^\d.]/g, '')) || 0;
+  return currencySymbol() + num.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 // Generate Order Number

@@ -129,7 +129,7 @@ $reviews = $revStmt->fetchAll();
             <div class="food-card-img-wrap">
               <img src="<?= $prod['image'] ?: 'assets/images/products/jollof-rice.jpg' ?>" alt="<?= sanitize($prod['name']) ?>" class="food-card-img" loading="lazy">
               <div class="food-card-badges">
-                <?php if ($prod['discount_price']): ?>
+                <?php if ($prod['discount_price'] !== null && $prod['discount_price'] > 0): ?>
                   <span class="food-badge-discount">SAVE <?= formatPrice($prod['price'] - $prod['discount_price']) ?></span>
                 <?php endif; ?>
                 <?php if ($prod['is_popular']): ?>
@@ -149,7 +149,7 @@ $reviews = $revStmt->fetchAll();
 
               <div class="food-card-meta">
                 <div class="food-card-price">
-                  <?php if ($prod['discount_price']): ?>
+                  <?php if ($prod['discount_price'] !== null && $prod['discount_price'] > 0): ?>
                     <span class="price-main"><?= formatPrice($prod['discount_price']) ?></span>
                     <span class="price-old"><?= formatPrice($prod['price']) ?></span>
                   <?php else: ?>

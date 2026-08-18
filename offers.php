@@ -12,7 +12,7 @@ $promoStmt = $db->query("SELECT * FROM promo_codes WHERE is_active = 1 ORDER BY 
 $promos = $promoStmt->fetchAll();
 
 // Fetch Discounted Meals
-$discStmt = $db->query("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.discount_price IS NOT NULL AND p.is_available = 1");
+$discStmt = $db->query("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.discount_price IS NOT NULL AND p.discount_price > 0 AND p.is_available = 1");
 $discountedMeals = $discStmt->fetchAll();
 ?>
 

@@ -34,7 +34,7 @@ $relStmt = $db->prepare("SELECT * FROM products WHERE category_id = ? AND id != 
 $relStmt->execute([$product['category_id'], $id]);
 $related = $relStmt->fetchAll();
 
-$effectivePrice = $product['discount_price'] ?: $product['price'];
+$effectivePrice = ($product['discount_price'] !== null && $product['discount_price'] > 0) ? $product['discount_price'] : $product['price'];
 ?>
 
 <div class="container py-4">
@@ -71,7 +71,7 @@ $effectivePrice = $product['discount_price'] ?: $product['price'];
       
       <!-- Price Display -->
       <div class="d-flex align-items-center gap-3 mb-3">
-        <?php if ($product['discount_price']): ?>
+        <?php if ($product['discount_price'] !== null && $product['discount_price'] > 0): ?>
           <span class="fs-2xl fw-extrabold" style="color: var(--primary-dark);"><?= formatPrice($product['discount_price']) ?></span>
           <span class="fs-lg text-muted text-decoration-line-through"><?= formatPrice($product['price']) ?></span>
           <span class="badge badge-danger">SAVE <?= formatPrice($product['price'] - $product['discount_price']) ?></span>
@@ -151,7 +151,7 @@ $effectivePrice = $product['discount_price'] ?: $product['price'];
               </div>
               <div class="food-card-body p-3">
                 <h4 class="fs-sm fw-bold mb-1"><a href="food.php?id=<?= $rel['id'] ?>"><?= sanitize($rel['name']) ?></a></h4>
-                <div class="price-main fs-base"><?= formatPrice($rel['discount_price'] ?: $rel['price']) ?></div>
+                <div class="price-main fs-base"><?= formatPrice(($rel['discount_price'] !== null && $rel['discount_price'] > 0) ? $rel['discount_price'] : $rel['price']) ?></div>
               </div>
             </div>
           </div>

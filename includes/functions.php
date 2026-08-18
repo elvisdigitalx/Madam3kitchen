@@ -5,9 +5,32 @@
 
 require_once __DIR__ . '/../config/database.php';
 
+/**
+ * Return the currency symbol to use when formatting prices.
+ *
+ * Normally this is the CURRENCY_SYMBOL constant from config.php ('₦'). If that
+ * constant is missing, empty, or has been corrupted during deployment (a common
+ * symptom is the multi-byte Naira sign mangled into ASCII digits, e.g. "262145"),
+ * we fall back to a clean Naira sign so prices never render as garbage.
+ */
+function currencySymbol(): string {
+    if (defined('CURRENCY_SYMBOL') && is_string(CURRENCY_SYMBOL)) {
+        $s = trim(CURRENCY_SYMBOL);
+        // A real currency symbol is never a bare integer. If it is empty or
+        // only ASCII digits, treat it as a corrupted value and fall back.
+        if ($s !== '' && !preg_match('/^[0-9]+$/', $s)) {
+            return $s;
+        }
+    }
+    return '₦';
+}
+
 function formatPrice($amount): string {
-    $num = floatval($amount);
-    return CURRENCY_SYMBOL . number_format($num, 0, '.', ',');
+    // Strip any accidental non-numeric garbage (e.g. a symbol glued to the number)
+    // before casting, so the numeric part is always clean.
+    $clean = preg_replace('/[^\d.]/', '', (string)$amount);
+    $num = floatval($clean);
+    return currencySymbol() . number_format($num, 0, '.', ',');
 }
 
 function sanitize(string $data): string {

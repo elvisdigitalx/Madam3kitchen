@@ -367,7 +367,7 @@ require_once __DIR__ . '/includes/admin-header.php';
               <td class="fw-bold text-primary"><?= formatPrice($prod['price']) ?></td>
 
               <td class="fs-sm">
-                <?= $prod['discount_price'] ? formatPrice($prod['discount_price']) : '<span class="text-muted">—</span>' ?>
+                <?= ($prod['discount_price'] !== null && $prod['discount_price'] > 0) ? formatPrice($prod['discount_price']) : '<span class="text-muted">—</span>' ?>
               </td>
 
               <td>
