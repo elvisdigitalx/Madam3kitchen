@@ -5,6 +5,14 @@
  * Location: No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State, Nigeria
  */
 
+// Idempotency guard: config.php is reached through several include paths
+// (direct, via database.php, via includes/functions.php, etc.). If it is ever
+// executed more than once in the same request, PHP would raise "Constant ...
+// already defined" warnings. Return early once the constants exist.
+if (defined('APP_NAME')) {
+    return;
+}
+
 // Strict error reporting for debugging, sanitized for production
 error_reporting(E_ALL & ~E_NOTICE);
 ini_set('display_errors', 0);
