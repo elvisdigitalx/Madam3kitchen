@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/functions.php';
 
 $pageTitle = $pageTitle ?? 'Madam 3 Kitchen — Authentic Nigerian Restaurant & Food Delivery in Benin City';
