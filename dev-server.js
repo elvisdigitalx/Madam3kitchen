@@ -226,8 +226,118 @@ let db = {
   ],
   activity_logs: [
     { id: 1, admin_user: "Madam 3 Administrator", action: "System initialized for Benin City kitchen dispatch", ip_address: "127.0.0.1", created_at: new Date().toISOString() }
+  ],
+  users: [
+    {
+      id: 1, name: "Madam 3 Administrator", email: "admin@madam3kitchen.com", phone: "08030001234",
+      address: "No. 3 Asoro Bus Stop, Ekehuan Road, Benin City", landmark: "Near Asoro Statue",
+      delivery_zone_id: 1, role: "admin", is_active: 1,
+      created_at: new Date(Date.now() - 180 * 86400000).toISOString()
+    },
+    {
+      id: 2, name: "Osasogie Igbinosa", email: "osas@example.com", phone: "08051234567", whatsapp: "2348051234567",
+      address: "14 Boundary Road, GRA, Benin City", landmark: "Opposite Golf Club",
+      delivery_zone_id: 2, role: "customer", is_active: 1,
+      created_at: new Date(Date.now() - 120 * 86400000).toISOString()
+    }
   ]
 };
+
+// ---------------- Admin / Server Helpers ----------------
+
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function slugify(name) {
+  return String(name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function parseCookies(req) {
+  const out = {};
+  (req.headers.cookie || '').split(';').forEach(p => {
+    const i = p.indexOf('=');
+    if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+  });
+  return out;
+}
+
+function adminLoggedIn(req) {
+  return parseCookies(req).m3k_admin === '1';
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      const type = (req.headers['content-type'] || '').toLowerCase();
+      if (type.includes('application/json')) {
+        try { resolve(JSON.parse(body)); } catch (e) { resolve({}); }
+        return;
+      }
+      const params = new URLSearchParams(body);
+      const obj = {};
+      for (const [k, v] of params) {
+        if (!(k in obj)) obj[k] = v;
+        else if (Array.isArray(obj[k])) obj[k].push(v);
+        else obj[k] = [obj[k], v];
+      }
+      resolve(obj);
+    });
+  });
+}
+
+function logActivity(action) {
+  db.activity_logs.unshift({
+    id: db.activity_logs.length + 1,
+    admin_user: 'Madam 3 Administrator',
+    action: action,
+    ip_address: '127.0.0.1',
+    created_at: new Date().toISOString()
+  });
+}
+
+function fmtDateTime(iso) {
+  try { return new Date(iso).toLocaleString('en-NG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  catch (e) { return String(iso || ''); }
+}
+
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }); }
+  catch (e) { return ''; }
+}
+
+function fmtDate(iso) {
+  try { return new Date(iso).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  catch (e) { return String(iso || ''); }
+}
+
+function statusBadge(status) {
+  const cls = {
+    'Pending': 'badge-warning',
+    'Payment Confirmed': 'badge-primary',
+    'Confirmed': 'badge-info',
+    'Preparing': 'badge-secondary',
+    'Ready': 'badge-secondary',
+    'Out for Delivery': 'badge-primary',
+    'Delivered': 'badge-success',
+    'Cancelled': 'badge-danger',
+    'Rejected': 'badge-danger'
+  }[status] || 'badge-secondary';
+  return `<span class="badge ${cls} fs-xs">${esc(status)}</span>`;
+}
+
+const ADMIN_STATUS_OPTIONS = ['Pending', 'Payment Confirmed', 'Confirmed', 'Preparing', 'Ready', 'Out for Delivery', 'Delivered', 'Cancelled', 'Rejected'];
+
+function statusSelect(current, orderId, wide) {
+  const style = wide ? 'style="width:auto;font-weight:700"' : 'style="width:auto;font-weight:700"';
+  return `<select class="form-select form-select-sm" ${style} onchange="updateOrderStatus(${orderId}, this.value)">
+    ${ADMIN_STATUS_OPTIONS.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('')}
+  </select>`;
+}
 
 // Helper: Format Price
 function formatPrice(amount) {
@@ -522,8 +632,10 @@ function handlePage(req, res, pathname, query) {
   const isAdminLogin = pathname === '/admin/login';
   const isAdminReceipt = pathname === '/admin/receipt';
 
-  // Build HTML document
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  // Build HTML document (admin pages write their own headers inside renderAdminPage)
+  if (!pathname.startsWith('/admin')) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  }
 
   // Read base template components from disk
   const renderLayout = (title, bodyContent, isAdmin = false) => {
@@ -571,7 +683,7 @@ function handlePage(req, res, pathname, query) {
         <a href="/admin/orders.php?status=Pending" class="admin-notification-bell" title="Live Pending Orders">
           🔔<span class="bell-badge" id="pending-order-badge" style="display:none;">0</span>
         </a>
-        <a href="/admin/settings.php" class="badge badge-success fs-xs">● RESTAURANT OPEN</a>
+        <a href="/admin/settings.php" class="badge ${(db.settings.restaurant_status || 'OPEN') === 'OPEN' ? 'badge-success' : 'badge-danger'} fs-xs">● ${(db.settings.restaurant_status || 'OPEN') === 'OPEN' ? 'RESTAURANT OPEN' : 'RESTAURANT CLOSED'}</a>
         <a href="/index.php" target="_blank" class="btn btn-outline-secondary btn-sm d-none d-sm-inline-flex">🌐 Live Site &rarr;</a>
       </div>
     </header>
@@ -605,12 +717,12 @@ function handlePage(req, res, pathname, query) {
   <div class="top-notice-bar">
     <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <span>📍 No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</span>
-        <span class="d-none d-md-inline ms-3">🕒 Daily: 8:00 AM – 10:00 PM</span>
+        <span>📍 ${esc(db.settings.restaurant_address)}</span>
+        <span class="d-none d-md-inline ms-3">🕒 Daily: ${esc(db.settings.opening_time)} – ${esc(db.settings.closing_time)}</span>
       </div>
       <div class="d-flex align-items-center gap-3">
-        <span class="badge badge-success"><span style="display:inline-block; width:6px; height:6px; background:#4CAF50; border-radius:50%; margin-right:4px;"></span> WE ARE OPEN</span>
-        <a href="tel:+2348030001234" class="d-none d-sm-inline text-gold">📞 0803 000 1234</a>
+        <span class="badge ${(db.settings.restaurant_status || 'OPEN') === 'OPEN' ? 'badge-success' : 'badge-danger'}"><span style="display:inline-block; width:6px; height:6px; background:#4CAF50; border-radius:50%; margin-right:4px;"></span> ${(db.settings.restaurant_status || 'OPEN') === 'OPEN' ? 'WE ARE OPEN' : 'TEMPORARILY CLOSED'}</span>
+        <a href="tel:${esc(db.settings.restaurant_phone)}" class="d-none d-sm-inline text-gold">📞 ${esc(db.settings.restaurant_phone)}</a>
       </div>
     </div>
   </div>
@@ -678,10 +790,10 @@ function handlePage(req, res, pathname, query) {
             <img src="/assets/images/logo.svg" alt="Madam 3 Kitchen" style="height: 48px; filter: brightness(0) invert(1);">
           </div>
           <p style="font-size: 0.9rem; line-height: 1.6;">
-            Welcome to <strong>Madam 3 Kitchen</strong>, your home for authentic Nigerian delicacies in Benin City. From party Jollof rice to traditional soups and tender peppered proteins, we bring the best taste to your doorstep.
+            Welcome to <strong>${esc(db.settings.restaurant_name)}</strong>, your home for authentic Nigerian delicacies in Benin City. From party Jollof rice to traditional soups and tender peppered proteins, we bring the best taste to your doorstep.
           </p>
           <div class="d-flex align-items-center gap-2 mt-3">
-            <span class="badge badge-warning">📍 No. 3 Asoro Bus Stop, Ekehuan Road</span>
+            <span class="badge badge-warning">📍 ${esc(db.settings.restaurant_address)}</span>
           </div>
         </div>
 
@@ -714,16 +826,16 @@ function handlePage(req, res, pathname, query) {
         <div class="col-12 col-md-6 col-lg-3">
           <h5>Get in Touch</h5>
           <div class="footer-contact-item">
-            <span>📍</span><div>No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</div>
+            <span>📍</span><div>${esc(db.settings.restaurant_address)}</div>
           </div>
           <div class="footer-contact-item">
-            <span>📞</span><div><a href="tel:+2348030001234" style="color: inherit;">0803 000 1234</a></div>
+            <span>📞</span><div><a href="tel:${esc(db.settings.restaurant_phone)}" style="color: inherit;">${esc(db.settings.restaurant_phone)}</a></div>
           </div>
           <div class="footer-contact-item">
-            <span>💬</span><div><a href="https://wa.me/2348030001234" target="_blank" style="color: inherit;">WhatsApp Orders</a></div>
+            <span>💬</span><div><a href="https://wa.me/${esc(db.settings.restaurant_whatsapp)}" target="_blank" style="color: inherit;">WhatsApp Orders</a></div>
           </div>
           <div class="footer-contact-item">
-            <span>🕒</span><div>Mon – Sun: 8:00 AM – 10:00 PM</div>
+            <span>🕒</span><div>Mon – Sun: ${esc(db.settings.opening_time)} – ${esc(db.settings.closing_time)}</div>
           </div>
         </div>
       </div>
@@ -772,6 +884,12 @@ function handlePage(req, res, pathname, query) {
 </body>
 </html>`;
   };
+
+  // Admin Pages (login, dashboard, settings, products, categories, zones, promos, orders, etc.)
+  if (pathname.startsWith('/admin')) {
+    renderAdminPage(req, res, pathname, query, renderLayout);
+    return;
+  }
 
   // Generate Page Specific Body HTML
   if (isHome) {
@@ -834,8 +952,8 @@ function handlePage(req, res, pathname, query) {
         <div class="row align-items-center">
           <div class="col-12 col-lg-6">
             <div class="hero-badge"><span>👑 Authentic Nigerian Taste in Benin City</span></div>
-            <h1 class="hero-title">Delicious Nigerian Meals, <span class="highlight">Made With Love.</span></h1>
-            <p class="hero-subtitle">Freshly prepared meals from <strong>Madam 3 Kitchen</strong>, delivered hot and fresh across Benin City.</p>
+            <h1 class="hero-title">${esc(db.settings.restaurant_tagline)}</h1>
+            <p class="hero-subtitle">Freshly prepared meals from <strong>${esc(db.settings.restaurant_name)}</strong>, delivered hot and fresh across Benin City.</p>
             <div class="d-flex align-items-center flex-wrap gap-3 mb-4">
               <a href="/menu.php" class="btn btn-primary btn-lg">🍛 Order Food Now</a>
               <a href="/menu.php" class="btn btn-outline-secondary btn-lg">📜 View Menu</a>
@@ -844,7 +962,7 @@ function handlePage(req, res, pathname, query) {
               <div class="hero-location-icon">📍</div>
               <div>
                 <div class="fw-bold fs-sm text-secondary">Our Kitchen Location</div>
-                <div class="fs-xs text-muted">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City, Edo State</div>
+                <div class="fs-xs text-muted">${esc(db.settings.restaurant_address)}</div>
               </div>
             </div>
           </div>
@@ -973,12 +1091,12 @@ function handlePage(req, res, pathname, query) {
           <div class="row align-items-center g-4">
             <div class="col-12 col-lg-5">
               <span class="badge badge-warning mb-3">📍 Visit Us</span>
-              <h2 class="text-white mb-3">Madam 3 Kitchen in Benin City</h2>
-              <p style="color: #D7CCC8;">Conveniently located at <strong>No. 3 Asoro Bus Stop, Ekehuan Road</strong>. Dine in or order fast delivery to your residence, office, or event venue anywhere in Benin City.</p>
+              <h2 class="text-white mb-3">${esc(db.settings.restaurant_name)} in Benin City</h2>
+              <p style="color: #D7CCC8;">Conveniently located at <strong>${esc(db.settings.restaurant_address)}</strong>. Dine in or order fast delivery to your residence, office, or event venue anywhere in Benin City.</p>
               <div class="d-flex flex-column gap-2 mb-4" style="color: #FFF8F0; font-size: 0.95rem;">
-                <div>🏢 <strong>Address:</strong> No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
-                <div>📞 <strong>Phone:</strong> <a href="tel:+2348030001234" style="color: var(--accent);">0803 000 1234</a></div>
-                <div>🕒 <strong>Opening Hours:</strong> Monday – Sunday: 8:00 AM – 10:00 PM</div>
+                <div>🏢 <strong>Address:</strong> ${esc(db.settings.restaurant_address)}</div>
+                <div>📞 <strong>Phone:</strong> <a href="tel:${esc(db.settings.restaurant_phone)}" style="color: var(--accent);">${esc(db.settings.restaurant_phone)}</a></div>
+                <div>🕒 <strong>Opening Hours:</strong> Monday – Sunday: ${esc(db.settings.opening_time)} – ${esc(db.settings.closing_time)}</div>
               </div>
               <div class="d-flex gap-3">
                 <a href="https://maps.google.com/?q=No.+3+Asoro+Bus+Stop+Ekehuan+Road+Benin+City" target="_blank" class="btn btn-primary">🗺️ Get Directions</a>
@@ -1102,6 +1220,1224 @@ function handlePage(req, res, pathname, query) {
       </div>
     `));
   }
+}
+
+// ---------------- Admin Page Router & Renderers ----------------
+async function renderAdminPage(req, res, pathname, query, renderLayout) {
+  // Normalize .php suffix
+  if (pathname.endsWith('.php')) pathname = pathname.slice(0, -4);
+  if (pathname === '/admin' || pathname === '/admin/' || pathname === '/admin/index') pathname = '/admin/index';
+
+  // ---- Admin Login ----
+  if (pathname === '/admin/login') {
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const email = (input.email || '').trim().toLowerCase();
+      const password = input.password || '';
+      const validEmail = (email === 'admin@madam3kitchen.com' || email === 'admin' || email === '08030001234');
+      if (validEmail && password === 'admin123') {
+        logActivity('Admin logged in successfully');
+        res.writeHead(302, {
+          'Location': '/admin/index.php',
+          'Set-Cookie': 'm3k_admin=1; Path=/; HttpOnly; SameSite=Lax'
+        });
+        res.end();
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(renderAdminLogin('Invalid administrator credentials.'));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderAdminLogin(''));
+    return;
+  }
+
+  // ---- Admin Logout ----
+  if (pathname === '/admin/logout') {
+    res.writeHead(302, {
+      'Location': '/admin/login.php',
+      'Set-Cookie': 'm3k_admin=; Path=/; Max-Age=0'
+    });
+    res.end();
+    return;
+  }
+
+  // ---- Auth guard for all other admin pages ----
+  if (!adminLoggedIn(req)) {
+    res.writeHead(302, { 'Location': '/admin/login.php' });
+    res.end();
+    return;
+  }
+
+  // ---- Dashboard ----
+  if (pathname === '/admin/index') {
+    const todayOrders = db.orders;
+    const totRevenue = todayOrders.reduce((s, o) => s + o.grand_total, 0);
+    const pendingOrders = todayOrders.filter(o => o.status === 'Pending').length;
+    const preparingOrders = todayOrders.filter(o => o.status === 'Preparing').length;
+    const completedOrders = todayOrders.filter(o => o.status === 'Delivered').length;
+    const topSelling = {};
+    todayOrders.forEach(o => (o.items || []).forEach(it => {
+      topSelling[it.product_name] = (topSelling[it.product_name] || 0) + it.quantity;
+    }));
+    const topList = Object.entries(topSelling).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    const adminContent = `
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3"><div class="stat-card"><div><div class="stat-title">Today's Revenue</div><div class="stat-value text-primary">${formatPrice(totRevenue)}</div><div class="fs-xs text-muted mt-1">${todayOrders.length} orders recorded</div></div><div class="stat-icon orange">💰</div></div></div>
+      <div class="col-12 col-sm-6 col-xl-3"><div class="stat-card"><div><div class="stat-title">Pending Orders</div><div class="stat-value text-warning">${pendingOrders}</div><div class="fs-xs text-muted mt-1">Requires confirmation</div></div><div class="stat-icon purple">🔔</div></div></div>
+      <div class="col-12 col-sm-6 col-xl-3"><div class="stat-card"><div><div class="stat-title">Cooking / Preparing</div><div class="stat-value text-info">${preparingOrders}</div><div class="fs-xs text-muted mt-1">Active in kitchen</div></div><div class="stat-icon blue">🍳</div></div></div>
+      <div class="col-12 col-sm-6 col-xl-3"><div class="stat-card"><div><div class="stat-title">Delivered Meals</div><div class="stat-value text-success">${completedOrders}</div><div class="fs-xs text-muted mt-1">All-time delivered</div></div><div class="stat-icon green">✅</div></div></div>
+    </div>
+    <div class="row g-4">
+      <div class="col-12 col-xl-8">
+        <div class="card shadow-sm p-4 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <div><h3 class="h5 fw-extrabold text-secondary mb-0">Recent Incoming Orders</h3><p class="text-muted fs-xs mb-0">Live dispatch queue for Benin City kitchen staff</p></div>
+            <a href="/admin/orders.php" class="btn btn-outline-primary btn-sm">View All Orders &rarr;</a>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>Order #</th><th>Customer</th><th>Area</th><th>Total</th><th>Status</th><th>Quick Action</th></tr></thead>
+              <tbody>
+                ${todayOrders.map(ro => `
+                  <tr>
+                    <td><a href="/admin/order-details.php?id=${ro.id}" class="fw-bold text-primary">${esc(ro.order_number)}</a><div class="fs-xs text-muted">${fmtTime(ro.created_at)}</div></td>
+                    <td><div class="fw-bold fs-sm">${esc(ro.customer_name)}</div><div class="fs-xs text-muted">${esc(ro.phone)}</div></td>
+                    <td class="fs-sm">${esc(ro.zone_name)}</td>
+                    <td class="fw-extrabold text-secondary">${formatPrice(ro.grand_total)}</td>
+                    <td>${statusBadge(ro.status)}</td>
+                    <td>${statusSelect(ro.status, ro.id)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4">
+        <div class="card shadow-sm p-4 mb-4">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">🔥 Top Selling Meals</h3>
+          <div class="d-flex flex-column gap-3">
+            ${topList.length ? topList.map((t, i) => `
+              <div class="d-flex justify-content-between align-items-center pb-2 border-bottom">
+                <div><div class="fw-bold fs-sm">${esc(t[0])}</div><div class="fs-xs text-muted">${t[1]} sold</div></div>
+                <span class="badge ${i === 0 ? 'badge-primary' : i === 1 ? 'badge-warning' : 'badge-secondary'}">★ #${i + 1}</span>
+              </div>`).join('') : '<div class="fs-xs text-muted">No sales yet</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Overview Dashboard', adminContent, true));
+    return;
+  }
+
+  // ---- Settings ----
+  if (pathname === '/admin/settings') {
+    let message = '';
+    let errorMessage = '';
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const def = db.settings;
+      const intVal = (v, d) => { const n = parseInt(v, 10); return isNaN(n) ? d : n; };
+      db.settings = {
+        restaurant_name: esc(input.restaurant_name || def.restaurant_name),
+        restaurant_tagline: esc(input.restaurant_tagline || def.restaurant_tagline),
+        restaurant_address: esc(input.restaurant_address || def.restaurant_address),
+        restaurant_phone: esc(input.restaurant_phone || def.restaurant_phone),
+        restaurant_whatsapp: esc(input.restaurant_whatsapp || def.restaurant_whatsapp),
+        restaurant_email: esc(input.restaurant_email || def.restaurant_email),
+        opening_time: input.opening_time || def.opening_time,
+        closing_time: input.closing_time || def.closing_time,
+        restaurant_status: input.restaurant_status || 'OPEN',
+        closed_message: esc(input.closed_message || def.closed_message),
+        default_delivery_fee: parseFloat(input.default_delivery_fee) || def.default_delivery_fee,
+        minimum_order_amount: parseFloat(input.minimum_order_amount) || def.minimum_order_amount,
+        enable_cod: input.enable_cod ? '1' : '0',
+        enable_bank_transfer: input.enable_bank_transfer ? '1' : '0',
+        bank_name: esc(input.bank_name || def.bank_name),
+        bank_account_number: esc(input.bank_account_number || def.bank_account_number),
+        bank_account_name: esc(input.bank_account_name || def.bank_account_name),
+        enable_paystack: input.enable_paystack ? '1' : '0',
+        paystack_public_key: esc(input.paystack_public_key || def.paystack_public_key),
+        google_maps_url: esc(input.google_maps_url || def.google_maps_url || ''),
+        currency_symbol: def.currency_symbol
+      };
+      logActivity('Updated restaurant settings & operations');
+      message = 'Settings updated successfully!';
+    }
+    const s = db.settings;
+    const checked = v => v === '1';
+    const content = `
+    ${message ? `<div class="alert alert-success">${esc(message)}</div>` : ''}
+    ${errorMessage ? `<div class="alert alert-danger">${esc(errorMessage)}</div>` : ''}
+    <form action="/admin/settings.php" method="POST" class="max-w-900 mx-auto">
+      <div class="card p-4 shadow-sm mb-4">
+        <h3 class="h5 fw-extrabold text-secondary mb-3 pb-2 border-bottom">1️⃣ Kitchen Status & Operational Hours</h3>
+        <div class="row g-3">
+          <div class="col-12 col-sm-6">
+            <label class="form-label">Manual Kitchen Status</label>
+            <select name="restaurant_status" class="form-select fw-bold">
+              <option value="OPEN" ${s.restaurant_status === 'OPEN' ? 'selected' : ''}>🟢 OPEN (Accepting Orders)</option>
+              <option value="CLOSED" ${s.restaurant_status === 'CLOSED' ? 'selected' : ''}>🔴 CLOSED (Temporarily Closed)</option>
+            </select>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label">Closed Notice Message</label>
+            <input type="text" name="closed_message" class="form-control" value="${esc(s.closed_message)}">
+          </div>
+          <div class="col-6 col-sm-3">
+            <label class="form-label">Opening Time</label>
+            <input type="time" name="opening_time" class="form-control" value="${esc(s.opening_time)}">
+          </div>
+          <div class="col-6 col-sm-3">
+            <label class="form-label">Closing Time</label>
+            <input type="time" name="closing_time" class="form-control" value="${esc(s.closing_time)}">
+          </div>
+          <div class="col-6 col-sm-3">
+            <label class="form-label">Min Order (₦)</label>
+            <input type="number" step="100" name="minimum_order_amount" class="form-control" value="${esc(s.minimum_order_amount)}">
+          </div>
+          <div class="col-6 col-sm-3">
+            <label class="form-label">Default Delivery Fee (₦)</label>
+            <input type="number" step="100" name="default_delivery_fee" class="form-control" value="${esc(s.default_delivery_fee)}">
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-4 shadow-sm mb-4">
+        <h3 class="h5 fw-extrabold text-secondary mb-3 pb-2 border-bottom">2️⃣ Brand & Contact Information</h3>
+        <div class="row g-3">
+          <div class="col-12 col-sm-6">
+            <label class="form-label">Restaurant Name</label>
+            <input type="text" name="restaurant_name" class="form-control" value="${esc(s.restaurant_name)}" required>
+          </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label">Tagline</label>
+            <input type="text" name="restaurant_tagline" class="form-control" value="${esc(s.restaurant_tagline)}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Physical Address</label>
+            <input type="text" name="restaurant_address" class="form-control" value="${esc(s.restaurant_address)}" required>
+          </div>
+          <div class="col-12 col-sm-4">
+            <label class="form-label">Phone Number</label>
+            <input type="text" name="restaurant_phone" class="form-control" value="${esc(s.restaurant_phone)}">
+          </div>
+          <div class="col-12 col-sm-4">
+            <label class="form-label">WhatsApp Number (Digits only with country code)</label>
+            <input type="text" name="restaurant_whatsapp" class="form-control" value="${esc(s.restaurant_whatsapp)}">
+          </div>
+          <div class="col-12 col-sm-4">
+            <label class="form-label">Email Address</label>
+            <input type="email" name="restaurant_email" class="form-control" value="${esc(s.restaurant_email)}">
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-4 shadow-sm mb-4">
+        <h3 class="h5 fw-extrabold text-secondary mb-3 pb-2 border-bottom">3️⃣ Payment Gateway & Bank Accounts</h3>
+        <div class="row g-3">
+          <div class="col-12"><label class="d-flex align-items-center gap-2"><input type="checkbox" name="enable_cod" value="1" ${checked(s.enable_cod) ? 'checked' : ''}><span class="fw-bold fs-sm">Enable Cash / POS on Delivery</span></label></div>
+          <div class="col-12"><label class="d-flex align-items-center gap-2"><input type="checkbox" name="enable_bank_transfer" value="1" ${checked(s.enable_bank_transfer) ? 'checked' : ''}><span class="fw-bold fs-sm">Enable Direct Bank Transfer Payments</span></label></div>
+          <div class="col-12 col-sm-4"><label class="form-label">Bank Name</label><input type="text" name="bank_name" class="form-control" value="${esc(s.bank_name)}"></div>
+          <div class="col-12 col-sm-4"><label class="form-label">Account Number</label><input type="text" name="bank_account_number" class="form-control" value="${esc(s.bank_account_number)}"></div>
+          <div class="col-12 col-sm-4"><label class="form-label">Account Name</label><input type="text" name="bank_account_name" class="form-control" value="${esc(s.bank_account_name)}"></div>
+          <div class="col-12 mt-3 pt-3 border-top"><label class="d-flex align-items-center gap-2"><input type="checkbox" name="enable_paystack" value="1" ${checked(s.enable_paystack) ? 'checked' : ''}><span class="fw-bold fs-sm">Enable Paystack Online Card / USSD Gateway</span></label></div>
+          <div class="col-12 col-sm-6"><label class="form-label">Paystack Public Key</label><input type="text" name="paystack_public_key" class="form-control" value="${esc(s.paystack_public_key)}"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg w-100 mb-5">💾 Save All Restaurant Settings</button>
+    </form>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Restaurant Settings', content, true));
+    return;
+  }
+
+  // ---- Products (Menu Management) ----
+  if (pathname === '/admin/products') {
+    const action = query.action || 'list';
+    let message = '';
+    let errorMessage = '';
+
+    // Delete
+    if (action === 'delete') {
+      const id = parseInt(query.id, 10);
+      const p = db.products.find(x => x.id === id);
+      if (p) {
+        logActivity('Deleted menu meal: ' + p.name);
+        db.products = db.products.filter(x => x.id !== id);
+      }
+      res.writeHead(302, { 'Location': '/admin/products.php?msg=deleted' });
+      res.end();
+      return;
+    }
+
+    // Save (create/edit)
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const id = parseInt(input.id, 10) || 0;
+      const name = esc(input.name || '');
+      const categoryId = parseInt(input.category_id, 10) || null;
+      const price = parseFloat(input.price) || 0;
+      const discountPrice = input.discount_price ? parseFloat(input.discount_price) : null;
+      const image = esc(input.image || 'assets/images/products/jollof-rice.jpg');
+      const isAvailable = input.is_available ? 1 : 0;
+      const isPopular = input.is_popular ? 1 : 0;
+      const isFeatured = input.is_featured ? 1 : 0;
+      const prepTime = parseInt(input.prep_time_minutes, 10) || 20;
+
+      if (!name || price <= 0) {
+        errorMessage = 'Please provide a valid meal name and price.';
+      } else {
+        const names = Array.isArray(input.extra_names) ? input.extra_names : (input.extra_names ? [input.extra_names] : []);
+        const prices = Array.isArray(input.extra_prices) ? input.extra_prices : (input.extra_prices ? [input.extra_prices] : []);
+        const extras = [];
+        for (let i = 0; i < names.length; i++) {
+          if (String(names[i]).trim()) {
+            extras.push({ name: esc(String(names[i]).trim()), price: parseFloat(prices[i]) || 0 });
+          }
+        }
+        if (id > 0) {
+          const p = db.products.find(x => x.id === id);
+          if (p) {
+            Object.assign(p, { name, category_id: categoryId, slug: slugify(name), description: esc(input.description || ''), price, discount_price: discountPrice, image, is_available: isAvailable, is_popular: isPopular, is_featured: isFeatured, prep_time_minutes: prepTime, extras });
+            logActivity('Updated food item: ' + name);
+            message = 'Food item updated successfully!';
+          }
+        } else {
+          const newId = Math.max(0, ...db.products.map(x => x.id)) + 1;
+          db.products.push({ id: newId, name, category_id: categoryId, slug: slugify(name), description: esc(input.description || ''), price, discount_price: discountPrice, image, is_available: isAvailable, is_popular: isPopular, is_featured: isFeatured, prep_time_minutes: prepTime, rating: 5.0, extras });
+          logActivity('Created new food item: ' + name);
+          message = 'New food item added to menu!';
+        }
+      }
+    }
+
+    // Edit data
+    let editProduct = null;
+    let existingExtras = [];
+    if (action === 'edit') {
+      editProduct = db.products.find(x => x.id === parseInt(query.id, 10)) || null;
+      if (editProduct) existingExtras = editProduct.extras || [];
+    }
+
+    const categories = db.categories.filter(c => c.is_active);
+
+    if (action === 'create' || action === 'edit') {
+      const productImages = [
+        'assets/images/products/jollof-rice.jpg', 'assets/images/products/egusi-soup.jpg',
+        'assets/images/products/fried-rice.jpg', 'assets/images/products/ogbono-soup.jpg',
+        'assets/images/products/peppered-chicken.jpg', 'assets/images/products/banga-soup.jpg',
+        'assets/images/products/amala-abula.jpg', 'assets/images/products/asun-goat.jpg',
+        'assets/images/products/chapman-drink.jpg', 'assets/images/hero-banner.jpg'
+      ];
+      const ep = editProduct || {};
+      const catOptions = `<option value="">-- Choose Category --</option>` + categories.map(c =>
+        `<option value="${c.id}" ${ep.category_id == c.id ? 'selected' : ''}>${c.icon} ${esc(c.name)}</option>`).join('');
+      const imgOptions = productImages.map(img =>
+        `<option value="${img}" ${(ep.image || '') === img ? 'selected' : ''}>${esc(img.split('/').pop().replace('.jpg', ''))}</option>`).join('');
+      const extraRows = existingExtras.length
+        ? existingExtras.map(e => `
+            <div class="d-flex gap-2 align-items-center extra-row">
+              <input type="text" name="extra_names[]" class="form-control form-control-sm" placeholder="Extra Name (e.g. Fried Plantain)" value="${esc(e.name)}">
+              <input type="number" step="50" name="extra_prices[]" class="form-control form-control-sm" style="max-width:130px" placeholder="Price (₦)" value="${e.price}">
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.extra-row').remove()">&times;</button>
+            </div>`).join('')
+        : `
+            <div class="d-flex gap-2 align-items-center extra-row">
+              <input type="text" name="extra_names[]" class="form-control form-control-sm" placeholder="Extra Name (e.g. Fried Plantain)">
+              <input type="number" step="50" name="extra_prices[]" class="form-control form-control-sm" style="max-width:130px" placeholder="Price (₦)" value="500">
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.extra-row').remove()">&times;</button>
+            </div>`;
+
+      const content = `
+      ${message ? `<div class="alert alert-success">${esc(message)}</div>` : ''}
+      ${errorMessage ? `<div class="alert alert-danger">${esc(errorMessage)}</div>` : ''}
+      <div class="card p-4 p-md-5 shadow-sm max-w-800 mx-auto">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4">
+          <h3 class="h4 fw-extrabold text-secondary mb-0">${action === 'edit' ? 'Edit Food Item' : 'Add New Meal to Menu'}</h3>
+          <a href="/admin/products.php" class="btn btn-outline-secondary btn-sm">&larr; Back to Menu List</a>
+        </div>
+        <form action="/admin/products.php" method="POST">
+          <input type="hidden" name="id" value="${ep.id || 0}">
+          <div class="row g-3">
+            <div class="col-12 col-sm-8"><label class="form-label">Meal / Dish Name *</label><input type="text" name="name" class="form-control" placeholder="e.g. Party Jollof Rice with Chicken" required value="${esc(ep.name || '')}"></div>
+            <div class="col-12 col-sm-4"><label class="form-label">Category *</label><select name="category_id" class="form-select" required>${catOptions}</select></div>
+            <div class="col-12"><label class="form-label">Description</label><textarea name="description" class="form-control" rows="3">${esc(ep.description || '')}</textarea></div>
+            <div class="col-12 col-sm-4"><label class="form-label">Regular Price (₦) *</label><input type="number" step="50" name="price" class="form-control" placeholder="3500" required value="${ep.price || ''}"></div>
+            <div class="col-12 col-sm-4"><label class="form-label">Discount Price (₦) (Optional)</label><input type="number" step="50" name="discount_price" class="form-control" placeholder="3000" value="${ep.discount_price || ''}"></div>
+            <div class="col-12 col-sm-4"><label class="form-label">Prep Time (Mins)</label><input type="number" name="prep_time_minutes" class="form-control" value="${ep.prep_time_minutes || 20}"></div>
+            <div class="col-12"><label class="form-label">Product Image</label><select name="image" class="form-select">${imgOptions}</select></div>
+            <div class="col-12">
+              <div class="d-flex flex-wrap gap-4 pt-2">
+                <label class="d-flex align-items-center gap-2"><input type="checkbox" name="is_available" value="1" ${!editProduct || ep.is_available ? 'checked' : ''}><span class="fw-bold fs-sm">In Stock & Available</span></label>
+                <label class="d-flex align-items-center gap-2"><input type="checkbox" name="is_popular" value="1" ${ep.is_popular ? 'checked' : ''}><span class="fw-bold fs-sm">Mark as Popular 🔥</span></label>
+                <label class="d-flex align-items-center gap-2"><input type="checkbox" name="is_featured" value="1" ${ep.is_featured ? 'checked' : ''}><span class="fw-bold fs-sm">Mark as Featured ⭐</span></label>
+              </div>
+            </div>
+            <div class="col-12 mt-4 pt-3 border-top">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <label class="form-label fw-bold mb-0">Customizable Meal Extras</label>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addExtraRow()">+ Add Extra Option</button>
+              </div>
+              <div id="extras-builder-container" class="d-flex flex-column gap-2">${extraRows}</div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-100 mt-4">💾 Save Food Item</button>
+        </form>
+      </div>
+      <script>
+      function addExtraRow() {
+        const c = document.getElementById('extras-builder-container');
+        const row = document.createElement('div');
+        row.className = 'd-flex gap-2 align-items-center extra-row';
+        row.innerHTML = '<input type="text" name="extra_names[]" class="form-control form-control-sm" placeholder="Extra Name (e.g. Peppered Chicken)"><input type="number" step="50" name="extra_prices[]" class="form-control form-control-sm" style="max-width:130px" placeholder="Price (₦)" value="1000"><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest(\\'.extra-row\\').remove()">&times;</button>';
+        c.appendChild(row);
+      }
+      </script>`;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(renderLayout('Menu & Food Management', content, true));
+      return;
+    }
+
+    // List view
+    const catFilter = query.cat || 'all';
+    const search = (query.search || '').trim().toLowerCase();
+    let list = db.products.slice();
+    if (catFilter !== 'all') list = list.filter(p => p.category_id === parseInt(catFilter, 10));
+    if (search) list = list.filter(p => p.name.toLowerCase().includes(search) || (p.description || '').toLowerCase().includes(search));
+    list = list.sort((a, b) => b.id - a.id);
+
+    const catRow = catFilter !== 'all' ? `<option value="all">-- All Categories --</option>` + categories.map(c => `<option value="${c.id}" ${catFilter == c.id ? 'selected' : ''}>${c.icon} ${esc(c.name)}</option>`).join('') : `<option value="all">-- All Categories --</option>` + categories.map(c => `<option value="${c.id}">${c.icon} ${esc(c.name)}</option>`).join('');
+
+    const rows = list.map(p => {
+      const cat = db.categories.find(c => c.id === p.category_id);
+      return `
+      <tr>
+        <td><div class="d-flex align-items-center gap-3">
+          <img src="/${p.image || 'assets/images/products/jollof-rice.jpg'}" alt="${esc(p.name)}" style="width:50px;height:50px;object-fit:cover;border-radius:var(--radius-sm)">
+          <div><a href="/admin/products.php?action=edit&id=${p.id}" class="fw-bold text-secondary">${esc(p.name)}</a><div class="fs-xs text-muted">${p.prep_time_minutes} mins prep</div></div>
+        </div></td>
+        <td class="fs-sm">${esc(cat ? cat.name : 'Uncategorized')}</td>
+        <td class="fw-bold text-primary">${formatPrice(p.price)}</td>
+        <td class="fs-sm">${p.discount_price ? formatPrice(p.discount_price) : '<span class="text-muted">—</span>'}</td>
+        <td><span class="badge ${p.is_available ? 'badge-success' : 'badge-danger'} fs-xs">${p.is_available ? 'In Stock' : 'Out of Stock'}</span></td>
+        <td>${p.is_popular ? '<span class="badge badge-warning fs-xs">🔥 Popular</span>' : ''}${p.is_featured ? '<span class="badge badge-primary fs-xs">⭐ Featured</span>' : ''}</td>
+        <td><div class="d-flex gap-2">
+          <a href="/admin/products.php?action=edit&id=${p.id}" class="btn btn-outline-primary btn-sm">Edit</a>
+          <a href="/admin/products.php?action=delete&id=${p.id}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this dish?')">Delete</a>
+        </div></td>
+      </tr>`;
+    }).join('');
+
+    const content = `
+    ${message ? `<div class="alert alert-success">${esc(message)}</div>` : ''}
+    ${query.msg === 'deleted' ? '<div class="alert alert-success">Food item deleted.</div>' : ''}
+    ${errorMessage ? `<div class="alert alert-danger">${esc(errorMessage)}</div>` : ''}
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><h1 class="h4 fw-extrabold text-secondary mb-0">Menu Management</h1><p class="text-muted fs-xs mb-0">Manage Nigerian dishes, portion prices, availability, and meal extras</p></div>
+      <a href="/admin/products.php?action=create" class="btn btn-primary btn-sm">+ Add New Food Item</a>
+    </div>
+    <div class="card p-3 shadow-sm mb-4">
+      <form action="/admin/products.php" method="GET" class="row g-2 align-items-end">
+        <div class="col-12 col-sm-6"><label class="form-label fs-xs mb-1">Search Meal Name</label><input type="text" name="search" class="form-control form-control-sm" placeholder="e.g. Jollof, Egusi, Asun..." value="${esc(query.search || '')}"></div>
+        <div class="col-12 col-sm-4"><label class="form-label fs-xs mb-1">Filter by Category</label><select name="cat" class="form-select form-select-sm">${catRow}</select></div>
+        <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary btn-sm w-100">Filter</button></div>
+      </form>
+    </div>
+    <div class="card shadow-sm p-4">
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>Dish</th><th>Category</th><th>Price</th><th>Discount</th><th>Status</th><th>Badges</th><th>Actions</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7" class="text-center text-muted py-4">No products found.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Menu & Food Management', content, true));
+    return;
+  }
+
+  // ---- Categories ----
+  if (pathname === '/admin/categories') {
+    const action = query.action || 'list';
+    let message = '';
+    let errorMessage = '';
+
+    if (action === 'delete') {
+      const id = parseInt(query.id, 10);
+      db.categories = db.categories.filter(x => x.id !== id);
+      logActivity('Deleted category ID #' + id);
+      res.writeHead(302, { 'Location': '/admin/categories.php?msg=deleted' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const id = parseInt(input.id, 10) || 0;
+      const name = esc(input.name || '');
+      if (!name) {
+        errorMessage = 'Please enter a category name.';
+      } else {
+        const icon = esc(input.icon || '🍲');
+        const displayOrder = parseInt(input.display_order, 10) || 0;
+        const isActive = input.is_active ? 1 : 0;
+        if (id > 0) {
+          const c = db.categories.find(x => x.id === id);
+          if (c) Object.assign(c, { name, slug: slugify(name), icon, display_order: displayOrder, is_active: isActive });
+          logActivity('Updated category: ' + name);
+          message = 'Category updated successfully!';
+        } else {
+          const newId = Math.max(0, ...db.categories.map(x => x.id)) + 1;
+          db.categories.push({ id: newId, name, slug: slugify(name), icon, image: null, display_order: displayOrder, is_active: isActive });
+          logActivity('Created category: ' + name);
+          message = 'New category added!';
+        }
+      }
+    }
+
+    let editCat = null;
+    if (action === 'edit') editCat = db.categories.find(x => x.id === parseInt(query.id, 10)) || null;
+    const categories = db.categories.slice().sort((a, b) => a.display_order - b.display_order);
+    const productCount = cid => db.products.filter(p => p.category_id === cid).length;
+
+    const content = `
+    ${message ? `<div class="alert alert-success">${esc(message)}</div>` : ''}
+    ${query.msg === 'deleted' ? '<div class="alert alert-success">Category deleted.</div>' : ''}
+    ${errorMessage ? `<div class="alert alert-danger">${esc(errorMessage)}</div>` : ''}
+    <div class="row g-4">
+      <div class="col-12 col-md-5">
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">${action === 'edit' ? 'Edit Category' : 'Create New Category'}</h3>
+          <form action="/admin/categories.php" method="POST">
+            <input type="hidden" name="id" value="${editCat ? editCat.id : 0}">
+            <div class="form-group mb-3"><label class="form-label">Category Name *</label><input type="text" name="name" class="form-control" placeholder="e.g. Rice Dishes, Soups, Drinks" required value="${esc(editCat ? editCat.name : '')}"></div>
+            <div class="form-group mb-3"><label class="form-label">Emoji Icon</label><input type="text" name="icon" class="form-control" placeholder="🍲, 🍚, 🍗, 🍹" value="${esc(editCat ? editCat.icon : '🍲')}"></div>
+            <div class="form-group mb-3"><label class="form-label">Display Order</label><input type="number" name="display_order" class="form-control" value="${editCat ? editCat.display_order : 0}"></div>
+            <div class="form-group mb-4"><label class="d-flex align-items-center gap-2"><input type="checkbox" name="is_active" value="1" ${!editCat || editCat.is_active ? 'checked' : ''}><span class="fw-bold fs-sm">Active Category</span></label></div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary w-100">${action === 'edit' ? 'Save Changes' : '+ Add Category'}</button>
+              ${action === 'edit' ? '<a href="/admin/categories.php" class="btn btn-outline-secondary">Cancel</a>' : ''}
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="col-12 col-md-7">
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">All Categories (${categories.length})</h3>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>Icon</th><th>Name</th><th>Meals</th><th>Order</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${categories.map(c => `<tr>
+                  <td style="font-size:1.5rem">${c.icon}</td>
+                  <td><strong>${esc(c.name)}</strong><div class="fs-xs text-muted">slug: ${esc(c.slug)}</div></td>
+                  <td><span class="badge badge-secondary">${productCount(c.id)} dishes</span></td>
+                  <td>${c.display_order}</td>
+                  <td><span class="badge ${c.is_active ? 'badge-success' : 'badge-danger'}">${c.is_active ? 'Active' : 'Disabled'}</span></td>
+                  <td><div class="d-flex gap-1">
+                    <a href="/admin/categories.php?action=edit&id=${c.id}" class="btn btn-outline-primary btn-sm">Edit</a>
+                    <a href="/admin/categories.php?action=delete&id=${c.id}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this category?')">Delete</a>
+                  </div></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Category Management', content, true));
+    return;
+  }
+
+  // ---- Delivery Zones ----
+  if (pathname === '/admin/delivery-zones') {
+    const action = query.action || 'list';
+    let message = '';
+    let errorMessage = '';
+
+    if (action === 'delete') {
+      const id = parseInt(query.id, 10);
+      db.delivery_zones = db.delivery_zones.filter(x => x.id !== id);
+      logActivity('Deleted delivery zone ID #' + id);
+      res.writeHead(302, { 'Location': '/admin/delivery-zones.php?msg=deleted' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const id = parseInt(input.id, 10) || 0;
+      const name = esc(input.name || '');
+      if (!name) {
+        errorMessage = 'Zone name is required.';
+      } else {
+        const description = esc(input.description || '');
+        const deliveryFee = parseFloat(input.delivery_fee) || 1000;
+        const estimatedTime = esc(input.estimated_time || '25-45 mins');
+        const isActive = input.is_active ? 1 : 0;
+        if (id > 0) {
+          const z = db.delivery_zones.find(x => x.id === id);
+          if (z) Object.assign(z, { name, description, delivery_fee: deliveryFee, estimated_time: estimatedTime, is_active: isActive });
+          logActivity('Updated delivery zone: ' + name);
+          message = 'Delivery zone updated successfully!';
+        } else {
+          const newId = Math.max(0, ...db.delivery_zones.map(x => x.id)) + 1;
+          db.delivery_zones.push({ id: newId, name, description, delivery_fee: deliveryFee, estimated_time: estimatedTime, is_active: isActive });
+          logActivity('Added new delivery zone: ' + name);
+          message = 'New delivery zone created!';
+        }
+      }
+    }
+
+    let editZone = null;
+    if (action === 'edit') editZone = db.delivery_zones.find(x => x.id === parseInt(query.id, 10)) || null;
+    const zones = db.delivery_zones.slice().sort((a, b) => a.delivery_fee - b.delivery_fee);
+
+    const content = `
+    ${message ? `<div class="alert alert-success">${esc(message)}</div>` : ''}
+    ${query.msg === 'deleted' ? '<div class="alert alert-success">Delivery zone deleted.</div>' : ''}
+    ${errorMessage ? `<div class="alert alert-danger">${esc(errorMessage)}</div>` : ''}
+    <div class="row g-4">
+      <div class="col-12 col-md-5">
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">${action === 'edit' ? 'Edit Delivery Zone' : 'Add Benin City Delivery Zone'}</h3>
+          <form action="/admin/delivery-zones.php" method="POST">
+            <input type="hidden" name="id" value="${editZone ? editZone.id : 0}">
+            <div class="form-group mb-3"><label class="form-label">Zone / Area Name *</label><input type="text" name="name" class="form-control" placeholder="e.g. GRA & Boundary Road" required value="${esc(editZone ? editZone.name : '')}"></div>
+            <div class="form-group mb-3"><label class="form-label">Description / Landmarks Covered</label><input type="text" name="description" class="form-control" placeholder="e.g. Golf Club, Boundary Rd" value="${esc(editZone ? editZone.description : '')}"></div>
+            <div class="form-group mb-3"><label class="form-label">Delivery Fee (₦) *</label><input type="number" step="50" name="delivery_fee" class="form-control" placeholder="1000" required value="${editZone ? editZone.delivery_fee : '1000'}"></div>
+            <div class="form-group mb-3"><label class="form-label">Estimated Delivery Time</label><input type="text" name="estimated_time" class="form-control" placeholder="e.g. 25-35 mins" value="${esc(editZone ? editZone.estimated_time : '25-45 mins')}"></div>
+            <div class="form-group mb-4"><label class="d-flex align-items-center gap-2"><input type="checkbox" name="is_active" value="1" ${!editZone || editZone.is_active ? 'checked' : ''}><span class="fw-bold fs-sm">Active for Dispatch</span></label></div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary w-100">${action === 'edit' ? 'Save Changes' : '+ Add Delivery Zone'}</button>
+              ${action === 'edit' ? '<a href="/admin/delivery-zones.php" class="btn btn-outline-secondary">Cancel</a>' : ''}
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="col-12 col-md-7">
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">Configured Delivery Zones (${zones.length})</h3>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>Zone Area</th><th>Delivery Fee</th><th>Est. Time</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${zones.map(z => `<tr>
+                  <td><strong>${esc(z.name)}</strong><div class="fs-xs text-muted">${esc(z.description || 'Benin City')}</div></td>
+                  <td class="fw-bold text-primary">${formatPrice(z.delivery_fee)}</td>
+                  <td class="fs-xs">${esc(z.estimated_time)}</td>
+                  <td><span class="badge ${z.is_active ? 'badge-success' : 'badge-danger'}">${z.is_active ? 'Active' : 'Disabled'}</span></td>
+                  <td><div class="d-flex gap-1">
+                    <a href="/admin/delivery-zones.php?action=edit&id=${z.id}" class="btn btn-outline-primary btn-sm">Edit</a>
+                    <a href="/admin/delivery-zones.php?action=delete&id=${z.id}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this delivery zone?')">Delete</a>
+                  </div></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Benin City Delivery Zones', content, true));
+    return;
+  }
+
+  // ---- Promo Codes ----
+  if (pathname === '/admin/promo-codes') {
+    const action = query.action || 'list';
+    let message = '';
+    let errorMessage = '';
+
+    if (action === 'delete') {
+      const id = parseInt(query.id, 10);
+      db.promo_codes = db.promo_codes.filter(x => x.id !== id);
+      logActivity('Deleted promo code ID #' + id);
+      res.writeHead(302, { 'Location': '/admin/promo-codes.php?msg=deleted' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const id = parseInt(input.id, 10) || 0;
+      const code = String(input.code || '').trim().toUpperCase();
+      const discountType = input.discount_type === 'fixed' ? 'fixed' : 'percentage';
+      const discountValue = parseFloat(input.discount_value) || 0;
+      if (!code || discountValue <= 0) {
+        errorMessage = 'Please provide a valid code and discount value.';
+      } else {
+        const minOrder = parseFloat(input.min_order_amount) || 0;
+        const maxDiscount = input.max_discount_amount ? parseFloat(input.max_discount_amount) : null;
+        const usageLimit = parseInt(input.usage_limit, 10) || 100;
+        const isActive = input.is_active ? 1 : 0;
+        if (id > 0) {
+          const p = db.promo_codes.find(x => x.id === id);
+          if (p) Object.assign(p, { code, discount_type: discountType, discount_value: discountValue, min_order_amount: minOrder, max_discount_amount: maxDiscount, expiry_date: input.expiry_date || null, usage_limit: usageLimit, is_active: isActive });
+          logActivity('Updated promo code: ' + code);
+          message = 'Promo code updated successfully!';
+        } else {
+          const newId = Math.max(0, ...db.promo_codes.map(x => x.id)) + 1;
+          db.promo_codes.push({ id: newId, code, discount_type: discountType, discount_value: discountValue, min_order_amount: minOrder, max_discount_amount: maxDiscount, start_date: input.start_date || null, expiry_date: input.expiry_date || null, usage_limit: usageLimit, usage_count: 0, is_active: isActive });
+          logActivity('Created promo coupon: ' + code);
+          message = 'New promo code created!';
+        }
+      }
+    }
+
+    let editPromo = null;
+    if (action === 'edit') editPromo = db.promo_codes.find(x => x.id === parseInt(query.id, 10)) || null;
+    const promos = db.promo_codes.slice().sort((a, b) => b.id - a.id);
+
+    const content = `
+    ${message ? `<div class="alert alert-success">${esc(message)}</div>` : ''}
+    ${query.msg === 'deleted' ? '<div class="alert alert-success">Promo code deleted.</div>' : ''}
+    ${errorMessage ? `<div class="alert alert-danger">${esc(errorMessage)}</div>` : ''}
+    <div class="row g-4">
+      <div class="col-12 col-md-5">
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">${action === 'edit' ? 'Edit Promo Code' : 'Create Promo Code'}</h3>
+          <form action="/admin/promo-codes.php" method="POST">
+            <input type="hidden" name="id" value="${editPromo ? editPromo.id : 0}">
+            <div class="form-group mb-3"><label class="form-label">Promo Code (Uppercase) *</label><input type="text" name="code" class="form-control text-uppercase" placeholder="e.g. WELCOME10" required value="${esc(editPromo ? editPromo.code : '')}"></div>
+            <div class="row g-2 mb-3">
+              <div class="col-6"><label class="form-label">Discount Type</label><select name="discount_type" class="form-select"><option value="percentage" ${(!editPromo || editPromo.discount_type === 'percentage') ? 'selected' : ''}>Percentage (%)</option><option value="fixed" ${editPromo && editPromo.discount_type === 'fixed' ? 'selected' : ''}>Fixed (₦)</option></select></div>
+              <div class="col-6"><label class="form-label">Discount Value *</label><input type="number" step="1" name="discount_value" class="form-control" placeholder="10 or 500" required value="${editPromo ? editPromo.discount_value : '10'}"></div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6"><label class="form-label">Min Order (₦)</label><input type="number" step="100" name="min_order_amount" class="form-control" placeholder="3000" value="${editPromo ? editPromo.min_order_amount : '0'}"></div>
+              <div class="col-6"><label class="form-label">Max Discount (₦)</label><input type="number" step="100" name="max_discount_amount" class="form-control" placeholder="2000" value="${editPromo && editPromo.max_discount_amount != null ? editPromo.max_discount_amount : ''}"></div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6"><label class="form-label">Expiry Date</label><input type="date" name="expiry_date" class="form-control" value="${editPromo && editPromo.expiry_date ? esc(editPromo.expiry_date) : ''}"></div>
+              <div class="col-6"><label class="form-label">Usage Limit</label><input type="number" name="usage_limit" class="form-control" value="${editPromo ? editPromo.usage_limit : '100'}"></div>
+            </div>
+            <div class="form-group mb-4"><label class="d-flex align-items-center gap-2"><input type="checkbox" name="is_active" value="1" ${!editPromo || editPromo.is_active ? 'checked' : ''}><span class="fw-bold fs-sm">Active & Usable</span></label></div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary w-100">${action === 'edit' ? 'Save Changes' : '+ Create Promo Code'}</button>
+              ${action === 'edit' ? '<a href="/admin/promo-codes.php" class="btn btn-outline-secondary">Cancel</a>' : ''}
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="col-12 col-md-7">
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">All Promo Codes (${promos.length})</h3>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>Code</th><th>Discount</th><th>Min Order</th><th>Used</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${promos.map(p => `<tr>
+                  <td><strong class="text-primary">${esc(p.code)}</strong></td>
+                  <td class="fw-bold">${p.discount_type === 'percentage' ? p.discount_value + '%' : formatPrice(p.discount_value)}</td>
+                  <td class="fs-xs">${formatPrice(p.min_order_amount)}</td>
+                  <td class="fs-xs">${p.usage_count} / ${p.usage_limit}</td>
+                  <td><span class="badge ${p.is_active ? 'badge-success' : 'badge-danger'}">${p.is_active ? 'Active' : 'Expired'}</span></td>
+                  <td><div class="d-flex gap-1">
+                    <a href="/admin/promo-codes.php?action=edit&id=${p.id}" class="btn btn-outline-primary btn-sm">Edit</a>
+                    <a href="/admin/promo-codes.php?action=delete&id=${p.id}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this coupon code?')">Delete</a>
+                  </div></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Promotions & Coupons', content, true));
+    return;
+  }
+
+  // ---- Orders ----
+  if (pathname === '/admin/orders') {
+    const statusFilter = query.status || 'all';
+    const search = (query.search || '').trim().toLowerCase();
+    const fromDate = query.from_date || '';
+    const toDate = query.to_date || '';
+
+    let orders = db.orders.slice();
+    if (statusFilter !== 'all') orders = orders.filter(o => o.status === statusFilter);
+    if (search) orders = orders.filter(o =>
+      (o.order_number || '').toLowerCase().includes(search) ||
+      (o.customer_name || '').toLowerCase().includes(search) ||
+      (o.phone || '').includes(search) ||
+      (o.delivery_address || '').toLowerCase().includes(search));
+    if (fromDate) orders = orders.filter(o => (o.created_at || '').slice(0, 10) >= fromDate);
+    if (toDate) orders = orders.filter(o => (o.created_at || '').slice(0, 10) <= toDate);
+    orders = orders.sort((a, b) => b.id - a.id);
+
+    const tabs = [
+      ['all', 'All Orders'], ['Pending', '🔔 Pending'], ['Confirmed', '✓ Confirmed'], ['Preparing', '🍳 Preparing'],
+      ['Ready', '📦 Ready'], ['Out for Delivery', '🛵 Out for Delivery'], ['Delivered', '🎉 Delivered'], ['Cancelled', '❌ Cancelled']
+    ];
+    const tabLinks = tabs.map(([val, label]) =>
+      `<a href="/admin/orders.php?status=${encodeURIComponent(val)}" class="filter-tab ${statusFilter === val ? 'active' : ''}">${label}</a>`).join('');
+
+    const rows = orders.map(o => `
+      <tr>
+        <td><a href="/admin/order-details.php?id=${o.id}" class="fw-extrabold text-primary">${esc(o.order_number)}</a><div class="fs-xs text-muted">${fmtDateTime(o.created_at)}</div></td>
+        <td><div class="fw-bold fs-sm">${esc(o.customer_name)}</div><div class="fs-xs text-muted">📞 ${esc(o.phone)}</div></td>
+        <td class="fs-sm"><strong>${esc(o.zone_name || 'Benin City')}</strong><div class="fs-xs text-muted text-truncate" style="max-width:180px">${esc(o.delivery_address)}</div></td>
+        <td>${o.order_timing === 'scheduled' ? `<span class="badge badge-warning fs-xs">📅 ${esc(o.scheduled_date)} ${esc(o.scheduled_time)}</span>` : '<span class="badge badge-primary fs-xs">⚡ ASAP</span>'}</td>
+        <td class="fw-extrabold text-secondary">${formatPrice(o.grand_total)}</td>
+        <td><span class="badge ${o.payment_status === 'Paid' ? 'badge-success' : 'badge-secondary'} fs-xs">${esc(String(o.payment_status).toUpperCase())} (${esc(o.payment_method)})</span></td>
+        <td>${statusSelect(o.status, o.id)}</td>
+        <td><div class="d-flex gap-1">
+          <a href="/admin/order-details.php?id=${o.id}" class="btn btn-outline-primary btn-sm" title="View Full Details">👁️</a>
+          <a href="/admin/receipt.php?id=${o.id}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Print Receipt">🖨️</a>
+        </div></td>
+      </tr>`).join('');
+
+    const content = `
+    <div class="filter-tabs mb-3">${tabLinks}</div>
+    <div class="card p-3 shadow-sm mb-4">
+      <form action="/admin/orders.php" method="GET" class="row g-2 align-items-end">
+        <input type="hidden" name="status" value="${esc(statusFilter)}">
+        <div class="col-12 col-sm-4"><label class="form-label fs-xs mb-1">Search Order / Customer / Phone</label><input type="text" name="search" class="form-control form-control-sm" placeholder="e.g. MDM-2026, Osas, 0803..." value="${esc(query.search || '')}"></div>
+        <div class="col-6 col-sm-3"><label class="form-label fs-xs mb-1">From Date</label><input type="date" name="from_date" class="form-control form-control-sm" value="${esc(fromDate)}"></div>
+        <div class="col-6 col-sm-3"><label class="form-label fs-xs mb-1">To Date</label><input type="date" name="to_date" class="form-control form-control-sm" value="${esc(toDate)}"></div>
+        <div class="col-12 col-sm-2 d-flex gap-1"><button type="submit" class="btn btn-primary btn-sm flex-grow-1">Filter</button><a href="/admin/orders.php" class="btn btn-outline-secondary btn-sm">Reset</a></div>
+      </form>
+    </div>
+    <div class="card shadow-sm p-4">
+      <div class="d-flex align-items-center justify-content-between mb-3"><h3 class="h5 fw-extrabold text-secondary mb-0">Orders List (${orders.length})</h3></div>
+      ${orders.length ? `<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Order #</th><th>Customer Info</th><th>Delivery Area</th><th>Timing</th><th>Amount</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="text-center py-5 text-muted"><div style="font-size:3rem">📦</div><p class="mt-2">No orders match the selected filters.</p></div>'}
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Orders Management', content, true));
+    return;
+  }
+
+  // ---- Order Details ----
+  if (pathname === '/admin/order-details') {
+    const id = parseInt(query.id, 10) || 0;
+    const order = db.orders.find(o => o.id === id);
+    if (!order) {
+      res.writeHead(302, { 'Location': '/admin/orders.php' });
+      res.end();
+      return;
+    }
+    const items = order.items || [];
+    const totalExtras = it => (it.extras || []).reduce((s, e) => s + e.extra_price, 0);
+    const content = `
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><a href="/admin/orders.php" class="fs-sm text-muted">&larr; Back to Orders</a>
+        <h1 class="h3 fw-extrabold text-secondary mb-0">Order: ${esc(order.order_number)}</h1>
+        <div class="fs-xs text-muted">Placed on ${fmtDateTime(order.created_at)}</div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="/admin/receipt.php?id=${order.id}" target="_blank" class="btn btn-secondary btn-sm">🖨️ Print Kitchen Receipt</a>
+        <a href="https://wa.me/${esc(order.whatsapp || order.phone)}" target="_blank" class="btn btn-whatsapp btn-sm">💬 Send WhatsApp to Customer</a>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-12 col-lg-8">
+        <div class="card p-4 shadow-sm mb-4">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">Order Items</h3>
+          <div class="table-responsive"><table class="table">
+            <thead><tr><th>Item Details</th><th>Unit Price</th><th>Qty</th><th class="text-end">Subtotal</th></tr></thead>
+            <tbody>${items.map(it => `
+              <tr>
+                <td><strong>${esc(it.product_name)}</strong>
+                  ${(it.extras && it.extras.length) ? `<div class="fs-xs text-muted">Extras: ${it.extras.map(e => esc(e.extra_name) + ' (+' + formatPrice(e.extra_price) + ')').join(', ')}</div>` : ''}
+                  ${it.instructions ? `<div class="fs-xs text-warning fst-italic">Note: ${esc(it.instructions)}</div>` : ''}
+                </td>
+                <td>${formatPrice(it.unit_price)}</td>
+                <td><span class="badge badge-secondary">${it.quantity}</span></td>
+                <td class="text-end fw-bold">${formatPrice(it.subtotal)}</td>
+              </tr>`).join('')}</tbody>
+          </table></div>
+          <div class="row justify-content-end mt-3">
+            <div class="col-12 col-sm-6">
+              <div class="d-flex justify-content-between mb-2 fs-sm"><span class="text-muted">Food Subtotal:</span><strong>${formatPrice(order.subtotal)}</strong></div>
+              <div class="d-flex justify-content-between mb-2 fs-sm"><span class="text-muted">Delivery Fee (${esc(order.zone_name || 'Benin City')}):</span><strong>${formatPrice(order.delivery_fee)}</strong></div>
+              ${order.discount_amount > 0 ? `<div class="d-flex justify-content-between mb-2 fs-sm text-danger"><span>Promo Discount (${esc(order.promo_code)}):</span><strong>- ${formatPrice(order.discount_amount)}</strong></div>` : ''}
+              <hr><div class="d-flex justify-content-between fs-lg fw-extrabold text-secondary"><span>Grand Total:</span><span class="text-primary">${formatPrice(order.grand_total)}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">Order Status History & Audit Log</h3>
+          <div class="d-flex flex-column gap-2">
+            <div class="p-2 border rounded bg-light d-flex justify-content-between align-items-center">
+              <div><span class="badge badge-primary me-2">${esc(order.status)}</span><span class="fs-sm">${esc('Status set to ' + order.status)}</span><div class="fs-xs text-muted">Changed by: Madam 3 Administrator</div></div>
+              <div class="fs-xs text-muted">${fmtTime(order.created_at)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="card p-4 shadow-sm mb-4">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">Update Order Status</h3>
+          <div class="form-group mb-3"><label class="form-label">Current Status</label><select id="update-order-status-select" class="form-select fw-bold">
+            ${ADMIN_STATUS_OPTIONS.map(s => `<option value="${s}" ${s === order.status ? 'selected' : ''}>${s}</option>`).join('')}
+          </select></div>
+          <div class="form-group mb-3"><label class="form-label">Status Notes</label><input type="text" id="update-order-notes" class="form-control" placeholder="e.g. Rider dispatched with bag #3"></div>
+          <button type="button" class="btn btn-primary w-100" onclick="saveStatusChange(${order.id})">Update Status</button>
+        </div>
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">Customer Details</h3>
+          <div class="d-flex flex-column gap-2 fs-sm">
+            <div><strong>Name:</strong> ${esc(order.customer_name)}</div>
+            <div><strong>Phone:</strong> <a href="tel:${esc(order.phone)}">${esc(order.phone)}</a></div>
+            <div><strong>WhatsApp:</strong> <a href="https://wa.me/${esc(order.whatsapp || order.phone)}" target="_blank">${esc(order.whatsapp || order.phone)}</a></div>
+            ${order.email ? `<div><strong>Email:</strong> ${esc(order.email)}</div>` : ''}
+            <hr class="my-2">
+            <div><strong>Delivery Zone:</strong> ${esc(order.zone_name || 'Benin City')}</div>
+            <div><strong>Street Address:</strong> ${esc(order.delivery_address)}</div>
+            <div><strong>Landmark:</strong> ${esc(order.landmark || 'N/A')}</div>
+            ${order.instructions ? `<div class="p-2 bg-warning bg-opacity-10 border rounded mt-2"><strong>Kitchen/Delivery Note:</strong><br>${esc(order.instructions)}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    async function saveStatusChange(orderId) {
+      const select = document.getElementById('update-order-status-select');
+      const notesInput = document.getElementById('update-order-notes');
+      const status = select.value;
+      const notes = notesInput.value.trim() || 'Status updated to ' + status;
+      try {
+        const response = await fetch('../api/orders.php?action=update_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId, status: status, notes: notes }) });
+        const data = await response.json();
+        if (data.success) { if (typeof showToast === 'function') showToast(data.message, 'success'); setTimeout(() => location.reload(), 500); }
+        else alert(data.message || 'Update failed');
+      } catch (e) { location.reload(); }
+    }
+    </script>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Order #' + order.order_number, content, true));
+    return;
+  }
+
+  // ---- Receipt ----
+  if (pathname === '/admin/receipt') {
+    const id = parseInt(query.id, 10) || 0;
+    const order = db.orders.find(o => o.id === id);
+    if (!order) { res.writeHead(302, { 'Location': '/admin/orders.php' }); res.end(); return; }
+    const items = order.items || [];
+    const content = `
+    <div class="card p-4 shadow-sm max-w-500 mx-auto">
+      <div class="text-center mb-3">
+        <img src="/assets/images/logo.svg" alt="Madam 3 Kitchen" style="height:44px">
+        <h2 class="h5 fw-extrabold text-secondary mb-0">${esc(db.settings.restaurant_name)}</h2>
+        <div class="fs-xs text-muted">${esc(db.settings.restaurant_address)}</div>
+        <div class="fs-xs text-muted">📞 ${esc(db.settings.restaurant_phone)}</div>
+      </div>
+      <hr>
+      <div class="fs-sm"><div class="d-flex justify-content-between"><span class="text-muted">Order:</span><strong>${esc(order.order_number)}</strong></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Date:</span><span>${fmtDateTime(order.created_at)}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Customer:</span><span>${esc(order.customer_name)}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Phone:</span><span>${esc(order.phone)}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Zone:</span><span>${esc(order.zone_name || 'Benin City')}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Address:</span><span>${esc(order.delivery_address)}</span></div>
+      </div>
+      <hr>
+      <div class="table-responsive"><table class="table table-sm">
+        <thead><tr><th>Item</th><th>Qty</th><th class="text-end">Amount</th></tr></thead>
+        <tbody>${items.map(it => `<tr><td>${esc(it.product_name)}</td><td>${it.quantity}</td><td class="text-end">${formatPrice(it.subtotal)}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <div class="d-flex justify-content-between fs-sm"><span>Subtotal</span><span>${formatPrice(order.subtotal)}</span></div>
+      <div class="d-flex justify-content-between fs-sm"><span>Delivery</span><span>${formatPrice(order.delivery_fee)}</span></div>
+      ${order.discount_amount > 0 ? `<div class="d-flex justify-content-between fs-sm text-danger"><span>Discount</span><span>- ${formatPrice(order.discount_amount)}</span></div>` : ''}
+      <hr>
+      <div class="d-flex justify-content-between fw-extrabold text-secondary"><span>Grand Total</span><span class="text-primary">${formatPrice(order.grand_total)}</span></div>
+      <div class="d-flex justify-content-between fs-sm mt-2"><span>Payment</span><span>${esc(order.payment_method.toUpperCase())} (${esc(order.payment_status)})</span></div>
+      <div class="d-flex justify-content-between fs-sm"><span>Status</span><span>${esc(order.status)}</span></div>
+      <hr>
+      <div class="text-center fs-xs text-muted">Thank you for choosing ${esc(db.settings.restaurant_name)}! 🍲</div>
+      <div class="text-center mt-3"><button type="button" class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print</button></div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Receipt ' + order.order_number, content, true));
+    return;
+  }
+
+  // ---- Customers ----
+  if (pathname === '/admin/customers') {
+    const search = (query.search || '').trim().toLowerCase();
+    let customers = db.users.filter(u => u.role === 'customer').map(u => {
+      const custOrders = db.orders.filter(o => o.user_id === u.id);
+      const totalOrders = custOrders.length;
+      const totalSpend = custOrders.reduce((s, o) => s + o.grand_total, 0);
+      return Object.assign({}, u, { total_orders: totalOrders, total_spend: totalSpend });
+    });
+    if (search) customers = customers.filter(c =>
+      (c.name || '').toLowerCase().includes(search) ||
+      (c.phone || '').includes(search) ||
+      (c.email || '').toLowerCase().includes(search) ||
+      (c.address || '').toLowerCase().includes(search));
+    customers = customers.sort((a, b) => b.total_spend - a.total_spend);
+
+    const rows = customers.map(c => `
+      <tr>
+        <td><div class="d-flex align-items-center gap-2"><div class="review-avatar" style="width:36px;height:36px;font-size:0.9rem">${esc(String(c.name || '?').charAt(0).toUpperCase())}</div><strong>${esc(c.name)}</strong></div></td>
+        <td><div>📞 ${esc(c.phone)}</div>${c.email ? `<div class="fs-xs text-muted">✉️ ${esc(c.email)}</div>` : ''}</td>
+        <td class="fs-xs" style="max-width:220px">${esc(c.address || 'No address saved')}${c.landmark ? `<div class="text-muted">Landmark: ${esc(c.landmark)}</div>` : ''}</td>
+        <td><span class="badge badge-primary">${c.total_orders} orders</span></td>
+        <td class="fw-bold text-success">${formatPrice(c.total_spend)}</td>
+        <td class="fs-xs text-muted">${fmtDate(c.created_at)}</td>
+      </tr>`).join('');
+
+    const content = `
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><h1 class="h4 fw-extrabold text-secondary mb-0">Customer Directory</h1><p class="text-muted fs-xs mb-0">View registered foodies, total orders, and total lifetime spend</p></div>
+    </div>
+    <div class="card p-3 shadow-sm mb-4">
+      <form action="/admin/customers.php" method="GET" class="row g-2">
+        <div class="col-10"><input type="text" name="search" class="form-control form-control-sm" placeholder="Search customer by name, phone, email, or Benin address..." value="${esc(query.search || '')}"></div>
+        <div class="col-2"><button type="submit" class="btn btn-primary btn-sm w-100">Search</button></div>
+      </form>
+    </div>
+    <div class="card shadow-sm p-4">
+      <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>Customer</th><th>Contact</th><th>Saved Address</th><th>Total Orders</th><th>Lifetime Spend</th><th>Joined</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="6" class="text-center text-muted py-4">No customers found.</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Customers Directory', content, true));
+    return;
+  }
+
+  // ---- Reviews ----
+  if (pathname === '/admin/reviews') {
+    const action = query.action || 'list';
+    const id = parseInt(query.id, 10);
+    if (id > 0 && action === 'approve') { const r = db.reviews.find(x => x.id === id); if (r) r.is_approved = 1; logActivity('Approved review #' + id); res.writeHead(302, { 'Location': '/admin/reviews.php' }); res.end(); return; }
+    if (id > 0 && action === 'unapprove') { const r = db.reviews.find(x => x.id === id); if (r) r.is_approved = 0; logActivity('Unapproved review #' + id); res.writeHead(302, { 'Location': '/admin/reviews.php' }); res.end(); return; }
+    if (id > 0 && action === 'delete') { db.reviews = db.reviews.filter(x => x.id !== id); logActivity('Deleted review #' + id); res.writeHead(302, { 'Location': '/admin/reviews.php' }); res.end(); return; }
+
+    const rows = db.reviews.slice().sort((a, b) => b.id - a.id).map(r => `
+      <tr>
+        <td><strong>${esc(r.customer_name)}</strong></td>
+        <td class="fs-sm">General Restaurant</td>
+        <td><span class="text-gold fw-bold">${'★'.repeat(r.rating)}</span> <span class="fs-xs text-muted">(${r.rating}/5)</span></td>
+        <td class="fs-sm" style="max-width:320px">&quot;${esc(r.comment)}&quot;</td>
+        <td><span class="badge ${r.is_approved ? 'badge-success' : 'badge-warning'}">${r.is_approved ? 'Approved / Visible' : 'Pending Moderation'}</span></td>
+        <td><div class="d-flex gap-1">
+          ${r.is_approved
+            ? `<a href="/admin/reviews.php?action=unapprove&id=${r.id}" class="btn btn-outline-warning btn-sm">Hide</a>`
+            : `<a href="/admin/reviews.php?action=approve&id=${r.id}" class="btn btn-outline-success btn-sm">Approve</a>`}
+          <a href="/admin/reviews.php?action=delete&id=${r.id}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this review?')">Delete</a>
+        </div></td>
+      </tr>`).join('');
+
+    const content = `
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><h1 class="h4 fw-extrabold text-secondary mb-0">Customer Reviews & Ratings</h1><p class="text-muted fs-xs mb-0">Moderate public testimonials shown on the Madam 3 Kitchen website</p></div>
+    </div>
+    <div class="card shadow-sm p-4">
+      ${db.reviews.length ? `<div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>Customer</th><th>Dish</th><th>Rating</th><th>Review Comment</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : '<div class="text-center py-4 text-muted">No reviews submitted yet.</div>'}
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Customer Reviews Moderation', content, true));
+    return;
+  }
+
+  // ---- Messages ----
+  if (pathname === '/admin/messages') {
+    const action = query.action || 'list';
+    const id = parseInt(query.id, 10);
+    if (id > 0 && action === 'delete') { db.contact_messages = db.contact_messages.filter(x => x.id !== id); logActivity('Deleted contact message #' + id); res.writeHead(302, { 'Location': '/admin/messages.php' }); res.end(); return; }
+    if (id > 0 && action === 'mark_read') { const m = db.contact_messages.find(x => x.id === id); if (m) m.is_read = 1; logActivity('Marked message #' + id + ' as read'); res.writeHead(302, { 'Location': '/admin/messages.php' }); res.end(); return; }
+
+    const rows = db.contact_messages.slice().sort((a, b) => b.id - a.id).map(m => `
+      <tr class="${m.is_read ? '' : 'table-warning'}">
+        <td class="fs-xs">${fmtTime(m.created_at)}</td>
+        <td><strong>${esc(m.name)}</strong></td>
+        <td class="fs-sm"><div>📞 <a href="tel:${esc(m.phone)}">${esc(m.phone)}</a></div>${m.email ? `<div class="fs-xs text-muted">✉️ ${esc(m.email)}</div>` : ''}</td>
+        <td><span class="badge badge-secondary">${esc(m.subject || 'Inquiry')}</span></td>
+        <td class="fs-sm" style="max-width:320px">${esc(m.message)}</td>
+        <td><div class="d-flex gap-1">
+          ${!m.is_read ? `<a href="/admin/messages.php?action=mark_read&id=${m.id}" class="btn btn-outline-success btn-sm">Mark Read</a>` : ''}
+          <a href="/admin/messages.php?action=delete&id=${m.id}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this message?')">Delete</a>
+        </div></td>
+      </tr>`).join('');
+
+    const content = `
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><h1 class="h4 fw-extrabold text-secondary mb-0">Customer Inquiries Inbox</h1><p class="text-muted fs-xs mb-0">Messages submitted via the contact form on the Madam 3 Kitchen website</p></div>
+    </div>
+    <div class="card shadow-sm p-4">
+      ${db.contact_messages.length ? `<div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>Date</th><th>Name</th><th>Contact</th><th>Subject</th><th>Message</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : '<div class="text-center py-4 text-muted">No messages received yet.</div>'}
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Customer Inquiries & Messages', content, true));
+    return;
+  }
+
+  // ---- Activity Logs ----
+  if (pathname === '/admin/activity-logs') {
+    const rows = db.activity_logs.slice().sort((a, b) => b.id - a.id).slice(0, 100).map(l => `
+      <tr>
+        <td class="fs-xs">${fmtDateTime(l.created_at)}</td>
+        <td><strong>${esc(l.admin_user)}</strong></td>
+        <td class="fs-sm">${esc(l.action)}</td>
+        <td class="fs-xs text-muted">${esc(l.ip_address || '127.0.0.1')}</td>
+      </tr>`).join('');
+    const content = `
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><h1 class="h4 fw-extrabold text-secondary mb-0">Admin Activity Logs</h1><p class="text-muted fs-xs mb-0">System audit trail of administrative changes, logins, and status updates</p></div>
+    </div>
+    <div class="card shadow-sm p-4">
+      <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>Timestamp</th><th>Admin User</th><th>Action Description</th><th>IP Address</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">No logs recorded yet.</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Admin Audit Logs', content, true));
+    return;
+  }
+
+  // ---- Reports ----
+  if (pathname === '/admin/reports') {
+    if (query.export === 'csv') {
+      const header = ['Order Number', 'Date', 'Customer Name', 'Phone', 'Delivery Zone', 'Subtotal (NGN)', 'Delivery (NGN)', 'Discount (NGN)', 'Grand Total (NGN)', 'Payment Method', 'Payment Status', 'Order Status'];
+      const lines = db.orders.map(o => [o.order_number, o.created_at, o.customer_name, o.phone, o.zone_name, o.subtotal, o.delivery_fee, o.discount_amount, o.grand_total, o.payment_method, o.payment_status, o.status]);
+      const csv = [header, ...lines].map(r => r.map(v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename=madam3_sales_report.csv' });
+      res.end(csv);
+      return;
+    }
+
+    const validOrders = db.orders.filter(o => !['Cancelled', 'Rejected'].includes(o.status));
+    const totRev = validOrders.reduce((s, o) => s + o.grand_total, 0);
+    const totOrders = validOrders.length;
+    const aov = totOrders ? totRev / totOrders : 0;
+
+    const topMealsMap = {};
+    db.orders.forEach(o => (o.items || []).forEach(it => {
+      const key = it.product_name;
+      if (!topMealsMap[key]) topMealsMap[key] = { qty: 0, rev: 0 };
+      topMealsMap[key].qty += it.quantity;
+      topMealsMap[key].rev += it.subtotal;
+    }));
+    const topMeals = Object.entries(topMealsMap).sort((a, b) => b[1].qty - a[1].qty).slice(0, 8);
+
+    const payStats = {};
+    db.orders.forEach(o => {
+      if (!payStats[o.payment_method]) payStats[o.payment_method] = { count: 0, total: 0 };
+      payStats[o.payment_method].count++; payStats[o.payment_method].total += o.grand_total;
+    });
+
+    const zoneStats = {};
+    db.orders.forEach(o => {
+      const z = o.zone_name || 'Direct / Asoro';
+      if (!zoneStats[z]) zoneStats[z] = { count: 0, total: 0 };
+      zoneStats[z].count++; zoneStats[z].total += o.grand_total;
+    });
+    const zoneList = Object.entries(zoneStats).sort((a, b) => b[1].count - a[1].count).slice(0, 8);
+
+    const dailyMap = {};
+    db.orders.forEach(o => {
+      const d = (o.created_at || '').slice(0, 10);
+      if (!dailyMap[d]) dailyMap[d] = { count: 0, total: 0 };
+      dailyMap[d].count++; dailyMap[d].total += o.grand_total;
+    });
+    const dailyList = Object.entries(dailyMap).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
+
+    const content = `
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div><h1 class="h4 fw-extrabold text-secondary mb-0">Sales & Financial Analytics</h1><p class="text-muted fs-xs mb-0">Performance metrics and accounting reports for Madam 3 Kitchen</p></div>
+      <a href="/admin/reports.php?export=csv" class="btn btn-primary btn-sm">📥 Export All Sales to CSV</a>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-4"><div class="stat-card"><div><div class="stat-title">Total Lifetime Revenue</div><div class="stat-value text-primary">${formatPrice(totRev)}</div><div class="fs-xs text-muted">All completed orders</div></div><div class="stat-icon orange">💰</div></div></div>
+      <div class="col-12 col-sm-4"><div class="stat-card"><div><div class="stat-title">Total Orders Fulfilled</div><div class="stat-value text-success">${totOrders}</div><div class="fs-xs text-muted">Excluding cancellations</div></div><div class="stat-icon green">📦</div></div></div>
+      <div class="col-12 col-sm-4"><div class="stat-card"><div><div class="stat-title">Average Order Value (AOV)</div><div class="stat-value text-info">${formatPrice(aov)}</div><div class="fs-xs text-muted">Average customer spend</div></div><div class="stat-icon blue">📊</div></div></div>
+    </div>
+    <div class="row g-4">
+      <div class="col-12 col-lg-7">
+        <div class="card p-4 shadow-sm mb-4">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">🔥 Most Ordered Nigerian Dishes</h3>
+          <div class="table-responsive"><table class="table align-middle">
+            <thead><tr><th>Dish Name</th><th>Quantity Sold</th><th class="text-end">Total Revenue</th></tr></thead>
+            <tbody>${topMeals.map(([name, d]) => `<tr><td><strong>${esc(name)}</strong></td><td><span class="badge badge-primary">${d.qty} portions</span></td><td class="text-end fw-extrabold text-secondary">${formatPrice(d.rev)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center text-muted">No meal sales recorded yet.</td></tr>'}</tbody>
+          </table></div>
+        </div>
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">📅 Recent Daily Revenue</h3>
+          <div class="table-responsive"><table class="table">
+            <thead><tr><th>Date</th><th>Orders Count</th><th class="text-end">Daily Revenue</th></tr></thead>
+            <tbody>${dailyList.map(([d, s]) => `<tr><td><strong>${esc(d)}</strong></td><td>${s.count} orders</td><td class="text-end fw-bold text-success">${formatPrice(s.total)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center text-muted">No daily records found.</td></tr>'}</tbody>
+          </table></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-5">
+        <div class="card p-4 shadow-sm mb-4">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">💳 Payment Method Statistics</h3>
+          <div class="d-flex flex-column gap-2">
+            ${Object.entries(payStats).map(([m, d]) => `<div class="p-2 border rounded d-flex justify-content-between align-items-center"><div><strong class="text-uppercase">${esc(m)}</strong><div class="fs-xs text-muted">${d.count} transactions</div></div><div class="fw-bold text-primary">${formatPrice(d.total)}</div></div>`).join('')}
+          </div>
+        </div>
+        <div class="card p-4 shadow-sm">
+          <h3 class="h5 fw-extrabold text-secondary mb-3">🛵 Top Benin Delivery Zones</h3>
+          <div class="d-flex flex-column gap-2">
+            ${zoneList.map(([z, d]) => `<div class="p-2 border rounded d-flex justify-content-between align-items-center"><div><strong>${esc(z)}</strong><div class="fs-xs text-muted">${d.count} deliveries</div></div><div class="fw-bold text-secondary">${formatPrice(d.total)}</div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout('Sales & Financial Reports', content, true));
+    return;
+  }
+
+  // Fallback for any other /admin path
+  res.writeHead(302, { 'Location': '/admin/index.php' });
+  res.end();
+}
+
+function renderAdminLogin(error) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal — Madam 3 Kitchen</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    body { background: linear-gradient(135deg, #2E1A11 0%, #1A0F0A 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  </style>
+</head>
+<body>
+<div class="card p-4 p-md-5 shadow-lg max-w-500 w-100" style="background:#FFFFFF;border-radius:var(--radius-xl)">
+  <div class="text-center mb-4">
+    <img src="/assets/images/logo.svg" alt="Madam 3 Kitchen" style="height:48px" class="mb-3">
+    <h1 class="h4 fw-extrabold text-secondary mb-1">Restaurant Management Portal</h1>
+    <p class="text-muted fs-xs">Benin City Kitchen Operations & Dispatch</p>
+  </div>
+  ${error ? `<div class="alert alert-danger">${esc(error)}</div>` : ''}
+  <form action="/admin/login.php" method="POST">
+    <div class="form-group mb-3">
+      <label for="admin_email" class="form-label">Administrator Email / Phone</label>
+      <input type="text" id="admin_email" name="email" class="form-control" placeholder="admin@madam3kitchen.com" required autofocus value="admin@madam3kitchen.com">
+    </div>
+    <div class="form-group mb-4">
+      <label for="admin_password" class="form-label">Password</label>
+      <input type="password" id="admin_password" name="password" class="form-control" placeholder="••••••••" required value="admin123">
+      <small class="text-muted fs-xs mt-1 d-block">Default credentials: admin@madam3kitchen.com / admin123</small>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">🔐 Access Admin Dashboard</button>
+    <div class="text-center"><a href="/index.php" class="fs-xs text-muted">&larr; Return to Customer Website</a></div>
+  </form>
+</div>
+</body>
+</html>`;
 }
 
 server.listen(PORT, HOST, () => {

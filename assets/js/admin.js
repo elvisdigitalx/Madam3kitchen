@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Live Order Poller & Notification Engine
   function pollLiveOrders() {
-    fetch('api/live-notifications.php')
+    fetch('/api/live-notifications.php')
       .then(res => res.json())
       .then(data => {
         if (data && data.pending_count !== undefined) {
@@ -76,7 +76,7 @@ async function updateOrderStatus(orderId, newStatus) {
   if (!confirm(`Change order #${orderId} status to "${newStatus}"?`)) return;
 
   try {
-    const response = await fetch('api/orders.php?action=update_status', {
+    const response = await fetch('/api/orders.php?action=update_status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order_id: orderId, status: newStatus })
