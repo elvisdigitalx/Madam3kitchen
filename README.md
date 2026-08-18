@@ -139,6 +139,15 @@ define('DB_PASS', 'your_secure_password');
 - **Default Password:** `admin123`
 *(Change your password immediately after your first login via Admin Settings)*
 
+### Step 6: Demo Customer Account
+A seed customer is included so you can test the full ordering flow
+(browse menu → cart → checkout → track order → account):
+- **Login (Email):** `osas@example.com`
+- **Login (Phone):** `08051234567`
+- **Password:** `admin123`
+
+*(New visitors can also register their own account, or checkout as a guest without an account.)*
+
 ---
 
 ## 🔒 Security Features Implemented

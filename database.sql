@@ -500,13 +500,15 @@ INSERT INTO `promo_codes` (`id`, `code`, `discount_type`, `discount_value`, `min
 (3, 'FAMILYFEAST', 'percentage', 15.00, 15000.00, 4000.00, '2026-01-01', '2026-12-31', 100, 5, 1);
 
 -- 6. Admins & Users
--- Default Admin (Password: admin123)
+-- All default accounts use the password: admin123
+-- (These are real bcrypt ($2y$) hashes generated with password_hash() so
+--  password_verify('admin123', ...) succeeds on first login.)
 INSERT INTO `admins` (`id`, `username`, `full_name`, `email`, `phone`, `password`, `role`, `is_active`) VALUES
-(1, 'admin', 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', 'superadmin', 1);
+(1, 'admin', 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '$2y$12$wsSm7zT6D/nUhh6LZMjwsuKBKLA/eL97u7JoZgvrPMpraFyTEfzdG', 'superadmin', 1);
 
 INSERT INTO `users` (`id`, `name`, `email`, `phone`, `whatsapp`, `password`, `address`, `landmark`, `delivery_zone_id`, `role`, `is_active`) VALUES
-(1, 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '2348030001234', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', 'No. 3 Asoro Bus Stop, Ekehuan Road', 'Near Asoro Statue', 1, 'admin', 1),
-(2, 'Osasogie Igbinosa', 'osas@example.com', '08051234567', '2348051234567', '$2y$10$wN1iN2GzFhG2pTf3HqPzse1s9Cg3fB.4a9CgDqE4N6A7P8Q9R0S1T', '14 Boundary Road, GRA, Benin City', 'Opposite Golf Club', 2, 'customer', 1);
+(1, 'Madam 3 Administrator', 'admin@madam3kitchen.com', '08030001234', '2348030001234', '$2y$12$GNhU0FWOt0lM4/0JVn6z4O7rUnDOCcxLj7rYQaBcSaDWrwbwDHZTi', 'No. 3 Asoro Bus Stop, Ekehuan Road', 'Near Asoro Statue', 1, 'admin', 1),
+(2, 'Osasogie Igbinosa', 'osas@example.com', '08051234567', '2348051234567', '$2y$12$4kjb/eqsEUz4ccE/W0Z3BedOzJmX/4pHIvT3A/xpwk/1b1LYA..qW', '14 Boundary Road, GRA, Benin City', 'Opposite Golf Club', 2, 'customer', 1);
 
 -- 7. Restaurant Settings
 INSERT INTO `restaurant_settings` (`setting_key`, `setting_value`) VALUES
