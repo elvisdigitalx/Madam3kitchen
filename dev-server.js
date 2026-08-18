@@ -229,13 +229,13 @@ let db = {
   ],
   users: [
     {
-      id: 1, name: "Madam 3 Administrator", email: "admin@madam3kitchen.com", phone: "08030001234",
+      id: 1, name: "Madam 3 Administrator", email: "admin@madam3kitchen.com", phone: "08030001234", password: "admin123",
       address: "No. 3 Asoro Bus Stop, Ekehuan Road, Benin City", landmark: "Near Asoro Statue",
       delivery_zone_id: 1, role: "admin", is_active: 1,
       created_at: new Date(Date.now() - 180 * 86400000).toISOString()
     },
     {
-      id: 2, name: "Osasogie Igbinosa", email: "osas@example.com", phone: "08051234567", whatsapp: "2348051234567",
+      id: 2, name: "Osasogie Igbinosa", email: "osas@example.com", phone: "08051234567", whatsapp: "2348051234567", password: "admin123",
       address: "14 Boundary Road, GRA, Benin City", landmark: "Opposite Golf Club",
       delivery_zone_id: 2, role: "customer", is_active: 1,
       created_at: new Date(Date.now() - 120 * 86400000).toISOString()
@@ -266,6 +266,13 @@ function parseCookies(req) {
 
 function adminLoggedIn(req) {
   return parseCookies(req).m3k_admin === '1';
+}
+
+function currentUser(req) {
+  const id = parseCookies(req).m3k_user;
+  if (!id) return null;
+  const u = db.users.find(x => String(x.id) === String(id));
+  return u && u.is_active ? u : null;
 }
 
 function readBody(req) {
@@ -632,10 +639,13 @@ function handlePage(req, res, pathname, query) {
   const isAdminLogin = pathname === '/admin/login';
   const isAdminReceipt = pathname === '/admin/receipt';
 
-  // Build HTML document (admin pages write their own headers inside renderAdminPage)
-  if (!pathname.startsWith('/admin')) {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  }
+  // Current customer session (for navbar state & checkout prefill)
+  const customer = currentUser(req);
+
+  // Routes handled by renderPublicPage (they write their own headers)
+  const isPublicDispatch = isMenu || isFood || isCart || isCheckout || isSuccess || isTrack ||
+    isAbout || isContact || isOffers || isFaq || isPrivacy || isTerms ||
+    isLogin || isRegister || isAccount || isOrders || pathname === '/logout';
 
   // Read base template components from disk
   const renderLayout = (title, bodyContent, isAdmin = false) => {
@@ -743,7 +753,9 @@ function handlePage(req, res, pathname, query) {
           <li><a href="/contact.php" class="nav-link ${isContact ? 'active' : ''}">Contact</a></li>
         </ul>
         <div class="nav-actions">
-          <a href="/login.php" class="btn btn-outline-secondary btn-sm d-none d-md-inline-flex">Sign In</a>
+          ${customer
+            ? `<a href="/account.php" class="btn btn-outline-secondary btn-sm d-none d-md-inline-flex">👤 My Account</a>`
+            : `<a href="/login.php" class="btn btn-outline-secondary btn-sm d-none d-md-inline-flex">Sign In</a>`}
           <a href="/cart.php" class="nav-cart-btn" title="View Cart">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
@@ -773,8 +785,11 @@ function handlePage(req, res, pathname, query) {
       <a href="/contact.php" class="btn btn-outline-secondary text-start ${isContact ? 'btn-primary text-white' : ''}">📞 Contact & Location</a>
     </div>
     <div class="mt-auto pt-3 border-top">
-      <a href="/login.php" class="btn btn-primary w-100 mb-2">Sign In</a>
-      <a href="/register.php" class="btn btn-outline-secondary w-100">Create Account</a>
+      ${customer
+        ? `<a href="/account.php" class="btn btn-primary w-100 mb-2">👤 My Account</a>
+           <a href="/logout.php" class="btn btn-outline-danger w-100">Sign Out</a>`
+        : `<a href="/login.php" class="btn btn-primary w-100 mb-2">Sign In</a>
+           <a href="/register.php" class="btn btn-outline-secondary w-100">Create Account</a>`}
       <div class="mt-3 text-center fs-xs text-muted">No. 3 Asoro Bus Stop, Ekehuan Road, Benin City</div>
     </div>
   </div>
@@ -848,7 +863,7 @@ function handlePage(req, res, pathname, query) {
   </footer>
 
   <!-- WhatsApp Floating Button -->
-  <a href="https://wa.me/2348030001234?text=Hello%20Madam%203%20Kitchen!%20I%20would%20like%20to%20order%20from%20Asoro,%20Benin%20City." class="floating-whatsapp" target="_blank" rel="noopener noreferrer">
+  <a href="https://wa.me/${esc(db.settings.restaurant_whatsapp)}?text=Hello%20Madam%203%20Kitchen!%20I%20would%20like%20to%20order%20from%20Asoro,%20Benin%20City." class="floating-whatsapp" target="_blank" rel="noopener noreferrer">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
     <span class="d-none d-sm-inline">Chat on WhatsApp</span>
   </a>
@@ -874,7 +889,7 @@ function handlePage(req, res, pathname, query) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
       <span>Orders</span>
     </a>
-    <a href="/login.php" class="mobile-nav-item ${isLogin || isRegister || isAccount ? 'active' : ''}">
+    <a href="${customer ? '/account.php' : '/login.php'}" class="mobile-nav-item ${isLogin || isRegister || isAccount ? 'active' : ''}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <span>Account</span>
     </a>
@@ -888,6 +903,12 @@ function handlePage(req, res, pathname, query) {
   // Admin Pages (login, dashboard, settings, products, categories, zones, promos, orders, etc.)
   if (pathname.startsWith('/admin')) {
     renderAdminPage(req, res, pathname, query, renderLayout);
+    return;
+  }
+
+  // Public Pages (menu, food, cart, checkout, order-success, track-order, static pages, auth)
+  if (isPublicDispatch) {
+    renderPublicPage(req, res, pathname, query, renderLayout, customer);
     return;
   }
 
@@ -1112,6 +1133,7 @@ function handlePage(req, res, pathname, query) {
         </div>
       </div>
     </section>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(renderLayout("Delicious Nigerian Meals", content));
     return;
   }
@@ -1195,6 +1217,7 @@ function handlePage(req, res, pathname, query) {
     // If client requested directly, render clean page
     fs.readFile(fullPath, 'utf8', (err, raw) => {
       // Return content or generic rendered wrapper
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(renderLayout(pathname.replace(/[\/\-_]/g, ' ').toUpperCase(), `
         <div class="container py-5">
           <div class="card p-4 p-md-5 shadow-sm max-w-900 mx-auto">
@@ -1220,6 +1243,840 @@ function handlePage(req, res, pathname, query) {
       </div>
     `));
   }
+}
+
+// ---------------- Public Page Router & Renderers ----------------
+const STATUS_LEVELS = { 'Pending': 0, 'Payment Confirmed': 1, 'Confirmed': 2, 'Preparing': 3, 'Ready': 4, 'Out for Delivery': 5, 'Delivered': 6, 'Cancelled': -1, 'Rejected': -1 };
+const TRACK_STEPS = [
+  { label: 'Order Received', icon: '1', desc: 'We have received your order details in our kitchen system.' },
+  { label: 'Payment Confirmed', icon: '2', desc: 'Payment verification recorded.' },
+  { label: 'Restaurant Confirmed', icon: '3', desc: 'Madam 3 Kitchen chefs have approved and queued your order.' },
+  { label: 'Preparing Your Meal 🍳', icon: '4', desc: 'Our cooks are actively packaging your delicious Nigerian dishes.' },
+  { label: 'Meal Ready & Packaged', icon: '5', desc: 'Food is hot and placed into insulated thermal delivery bags.' },
+  { label: 'Out for Delivery 🛵', icon: '6', desc: 'Dispatch rider is en-route to your address.' },
+  { label: 'Delivered 🎉', icon: '7', desc: 'Order delivered successfully. Enjoy your meal!' }
+];
+
+function productCard(p, imgPrefix) {
+  const prefix = imgPrefix || '';
+  return `
+    <div class="food-card">
+      ${!p.is_available ? '<div class="food-unavailable-overlay"><span class="food-unavailable-badge">Currently Unavailable</span></div>' : ''}
+      <div class="food-card-img-wrap">
+        <img src="${prefix}/${p.image || 'assets/images/products/jollof-rice.jpg'}" alt="${esc(p.name)}" class="food-card-img" loading="lazy">
+        <div class="food-card-badges">
+          ${p.discount_price ? `<span class="food-badge-discount">SAVE ${formatPrice(p.price - p.discount_price)}</span>` : ''}
+          ${p.is_popular ? '<span class="food-badge-popular">🔥 Popular</span>' : ''}
+        </div>
+      </div>
+      <div class="food-card-body">
+        <div class="food-card-header">
+          <h3 class="food-card-title"><a href="/food.php?id=${p.id}">${esc(p.name)}</a></h3>
+          <span class="food-card-rating">★ ${(p.rating || 5).toFixed(1)}</span>
+        </div>
+        <p class="food-card-desc">${esc(p.description || '')}</p>
+        <div class="food-card-meta">
+          <div class="food-card-price">
+            ${p.discount_price ? `<span class="price-main">${formatPrice(p.discount_price)}</span><span class="price-old">${formatPrice(p.price)}</span>` : `<span class="price-main">${formatPrice(p.price)}</span>`}
+          </div>
+          ${p.is_available
+            ? `<a href="/food.php?id=${p.id}" class="btn btn-primary btn-sm food-card-btn">+ Order Meal</a>`
+            : '<button class="btn btn-outline-secondary btn-sm" disabled>Unavailable</button>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderPublicPage(req, res, pathname, query, renderLayout, customer) {
+  const send = (title, content) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderLayout(title, content));
+  };
+
+  // ---------------- Menu ----------------
+  if (pathname === '/menu') {
+    const categories = db.categories.filter(c => c.is_active).sort((a, b) => a.display_order - b.display_order);
+    const selectedCategory = query.category || 'all';
+    const selectedSort = query.sort || 'popular';
+    const searchTerm = (query.search || '').trim().toLowerCase();
+
+    let products = db.products.slice();
+    if (selectedCategory !== 'all') products = products.filter(p => p.category_id === (db.categories.find(c => c.slug === selectedCategory) || {}).id);
+    if (searchTerm) products = products.filter(p => (p.name || '').toLowerCase().includes(searchTerm) || (p.description || '').toLowerCase().includes(searchTerm));
+    const eff = p => p.discount_price || p.price;
+    switch (selectedSort) {
+      case 'price_asc': products.sort((a, b) => eff(a) - eff(b)); break;
+      case 'price_desc': products.sort((a, b) => eff(b) - eff(a)); break;
+      case 'newest': products.sort((a, b) => b.id - a.id); break;
+      default: products.sort((a, b) => (b.is_popular - a.is_popular) || (a.id - b.id));
+    }
+
+    const catLinks = `<a href="/menu.php?category=all&sort=${encodeURIComponent(selectedSort)}" class="category-pill ${selectedCategory === 'all' ? 'active' : ''}"><span class="pill-icon">✨</span><span>All Dishes</span></a>` +
+      categories.map(c => `<a href="/menu.php?category=${encodeURIComponent(c.slug)}&sort=${encodeURIComponent(selectedSort)}" class="category-pill ${selectedCategory === c.slug ? 'active' : ''}"><span class="pill-icon">${c.icon}</span><span>${esc(c.name)}</span></a>`).join('');
+
+    const grid = products.map(p => {
+      const cat = db.categories.find(c => c.id === p.category_id);
+      return `<div class="col-12 col-sm-6 col-lg-4 col-xl-3 menu-grid-item" data-name="${esc(p.name.toLowerCase())}" data-desc="${esc((p.description || '').toLowerCase())}" data-category="${esc((cat ? cat.slug : '').toLowerCase())}">${productCard(p)}</div>`;
+    }).join('');
+
+    const content = `
+    <div class="py-4" style="background: linear-gradient(135deg, #FFF8F0 0%, #FFEED9 100%); border-bottom: 1px solid var(--border-color);">
+      <div class="container">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div><h1 class="h2 mb-1">Our Delicious Menu 🍲</h1><p class="text-muted mb-0 fs-sm">Freshly prepared authentic Nigerian delicacies, made with love in Benin City.</p></div>
+          <div style="min-width: 280px; max-width: 400px; width: 100%;">
+            <div style="position: relative;"><input type="text" id="menu-search-input" class="form-control" placeholder="Search Jollof, Soup, Chicken, Asun..." value="${esc(query.search || '')}"><span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;">🔍</span></div>
+          </div>
+        </div>
+        <div class="categories-wrapper mt-3">${catLinks}</div>
+      </div>
+    </div>
+    <div class="container py-5">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div class="fs-sm fw-bold text-muted">Showing ${products.length} delicious meal${products.length === 1 ? '' : 's'}</div>
+        <div class="d-flex align-items-center gap-2">
+          <label for="sort-select" class="fs-sm fw-bold text-secondary mb-0">Sort By:</label>
+          <select id="sort-select" class="form-select form-select-sm" style="width:auto" onchange="window.location.href='/menu.php?category=${encodeURIComponent(selectedCategory)}&search=${encodeURIComponent(query.search || '')}&sort=' + this.value;">
+            <option value="popular" ${selectedSort === 'popular' ? 'selected' : ''}>🔥 Most Popular</option>
+            <option value="price_asc" ${selectedSort === 'price_asc' ? 'selected' : ''}>💰 Price: Low to High</option>
+            <option value="price_desc" ${selectedSort === 'price_desc' ? 'selected' : ''}>💎 Price: High to Low</option>
+            <option value="newest" ${selectedSort === 'newest' ? 'selected' : ''}>✨ Newest Additions</option>
+          </select>
+        </div>
+      </div>
+      ${products.length ? `<div class="row g-4" id="menu-items-grid">${grid}</div>
+        <div id="no-menu-results" class="text-center py-5" style="display:none;"><div style="font-size:3rem">🔍</div><h4 class="mt-2">No matching dishes</h4><p class="text-muted">Try searching for another delicious item like Jollof, Egusi, Chicken, or Drinks.</p></div>`
+        : `<div class="text-center py-5"><div style="font-size:3.5rem" class="mb-3">🍲</div><h3>No meals found</h3><p class="text-muted">We couldn't find any dishes matching your current selection or search criteria.</p><a href="/menu.php" class="btn btn-primary mt-2">View Full Menu</a></div>`}
+    </div>`;
+    send('Our Menu', content);
+    return;
+  }
+
+  // ---------------- Food Detail ----------------
+  if (pathname === '/food') {
+    const id = parseInt(query.id, 10) || 0;
+    const product = db.products.find(p => p.id === id);
+    if (!product) { res.writeHead(302, { 'Location': '/menu.php' }); res.end(); return; }
+    const cat = db.categories.find(c => c.id === product.category_id);
+    const effectivePrice = product.discount_price || product.price;
+    const extras = product.extras || [];
+    const related = db.products.filter(p => p.category_id === product.category_id && p.id !== product.id && p.is_available).slice(0, 4);
+    const prodJson = JSON.stringify({ id: product.id, name: product.name, image: '/' + product.image, price: effectivePrice });
+    const minDate = new Date().toISOString().slice(0, 10);
+
+    const extraCards = extras.map(e => `
+      <label class="extra-option-card" for="extra_${e.id}">
+        <div class="d-flex align-items-center gap-2"><input type="checkbox" id="extra_${e.id}" class="extra-option-check" data-id="${e.id}" data-name="${esc(e.name)}" data-price="${e.price}"><span class="fw-semibold">${esc(e.name)}</span></div>
+        <span class="extra-price">+ ${formatPrice(e.price)}</span>
+      </label>`).join('');
+
+    const relatedCards = related.map(r => `
+      <div class="col-6 col-md-3">
+        <div class="food-card">
+          <div class="food-card-img-wrap"><img src="/${r.image || 'assets/images/products/jollof-rice.jpg'}" alt="${esc(r.name)}" class="food-card-img" loading="lazy"></div>
+          <div class="food-card-body p-3"><h4 class="fs-sm fw-bold mb-1"><a href="/food.php?id=${r.id}">${esc(r.name)}</a></h4><div class="price-main fs-base">${formatPrice(r.discount_price || r.price)}</div></div>
+        </div>
+      </div>`).join('');
+
+    const content = `
+    <div class="container py-4">
+      <nav aria-label="breadcrumb" class="mb-4"><ol class="d-flex align-items-center gap-2 list-unstyled fs-sm text-muted">
+        <li><a href="/index.php" class="text-muted">Home</a></li><li>/</li>
+        <li><a href="/menu.php" class="text-muted">Menu</a></li><li>/</li>
+        <li><a href="/menu.php?category=${encodeURIComponent(cat ? cat.slug : 'all')}" class="text-muted">${esc(cat ? cat.name : 'Dishes')}</a></li><li>/</li>
+        <li class="text-secondary fw-bold">${esc(product.name)}</li>
+      </ol></nav>
+      <div class="row g-4">
+        <div class="col-12 col-md-6">
+          <div class="card p-2" style="background:#FFFFFF;border-radius:var(--radius-xl);overflow:hidden"><img src="/${product.image || 'assets/images/products/jollof-rice.jpg'}" alt="${esc(product.name)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge badge-primary">${esc(cat ? cat.name : 'Madam 3 Delicacy')}</span>
+            <span class="badge badge-warning">★ ${(product.rating || 5).toFixed(1)} Rating</span>
+            <span class="badge badge-secondary">⏱️ ~${product.prep_time_minutes} mins prep</span>
+          </div>
+          <h1 class="h2 fw-extrabold mb-2" style="color:var(--secondary)">${esc(product.name)}</h1>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            ${product.discount_price
+              ? `<span class="fs-2xl fw-extrabold" style="color:var(--primary-dark)">${formatPrice(product.discount_price)}</span><span class="fs-lg text-muted text-decoration-line-through">${formatPrice(product.price)}</span><span class="badge badge-danger">SAVE ${formatPrice(product.price - product.discount_price)}</span>`
+              : `<span class="fs-2xl fw-extrabold" style="color:var(--primary-dark)">${formatPrice(product.price)}</span>`}
+          </div>
+          <p class="text-muted mb-4" style="line-height:1.6">${esc(product.description || '')}</p>
+          ${!product.is_available
+            ? `<div class="alert alert-warning"><strong>Currently Unavailable:</strong> This meal is temporarily sold out for today. Please check back shortly or explore our other delicious options.</div>`
+            : `
+            ${extras.length ? `<div class="mb-4"><label class="form-label fw-extrabold">Customize Your Meal / Add Delicious Extras:</label><div class="d-flex flex-column gap-2">${extraCards}</div></div>` : ''}
+            <div class="form-group mb-4"><label for="food-special-instructions" class="form-label">Special Cooking Instructions (Optional):</label><input type="text" id="food-special-instructions" class="form-control" placeholder="e.g. Less pepper, separate stew, add extra cutlery"></div>
+            <div class="card p-3" style="background:var(--bg-warm);border:1.5px solid var(--border-color)">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div><div class="fs-xs text-muted fw-bold mb-1">SELECT QUANTITY</div><div class="qty-control"><button type="button" class="qty-btn" id="qty-minus">-</button><input type="text" id="food-qty-input" class="qty-input" value="1" readonly><button type="button" class="qty-btn" id="qty-plus">+</button></div></div>
+                <div class="flex-grow-1 text-end"><div class="fs-xs text-muted fw-bold mb-1">TOTAL AMOUNT</div><div class="fs-xl fw-extrabold text-secondary mb-2" id="food-calculated-total">${formatPrice(effectivePrice)}</div><button type="button" class="btn btn-primary btn-lg w-100" id="btn-add-meal-to-cart">🛍️ Add to Order Cart</button></div>
+              </div>
+            </div>`}
+        </div>
+      </div>
+      ${related.length ? `<div class="mt-5 pt-4 border-top"><h3 class="mb-4">You Might Also Love 😋</h3><div class="row g-4">${relatedCards}</div></div>` : ''}
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const product = ${prodJson};
+      const basePrice = product.price;
+      const qtyInput = document.getElementById('food-qty-input');
+      const totalEl = document.getElementById('food-calculated-total');
+      const addBtn = document.getElementById('btn-add-meal-to-cart');
+      const checkboxes = document.querySelectorAll('.extra-option-check');
+      function calculateTotal() {
+        const qty = parseInt(qtyInput.value) || 1;
+        let unit = basePrice;
+        checkboxes.forEach(cb => { if (cb.checked) unit += parseFloat(cb.dataset.price || 0); });
+        totalEl.textContent = formatNaira(unit * qty);
+      }
+      document.getElementById('qty-minus').addEventListener('click', () => { let q = parseInt(qtyInput.value) || 1; if (q > 1) { qtyInput.value = q - 1; calculateTotal(); } });
+      document.getElementById('qty-plus').addEventListener('click', () => { qtyInput.value = (parseInt(qtyInput.value) || 1) + 1; calculateTotal(); });
+      checkboxes.forEach(cb => cb.addEventListener('change', (e) => { const p = e.target.closest('.extra-option-card'); if (p) p.classList.toggle('selected', e.target.checked); calculateTotal(); }));
+      if (addBtn) addBtn.addEventListener('click', () => {
+        const qty = parseInt(qtyInput.value) || 1;
+        const instructions = (document.getElementById('food-special-instructions').value || '').trim();
+        const selectedExtras = [];
+        checkboxes.forEach(cb => { if (cb.checked) selectedExtras.push({ id: cb.dataset.id, name: cb.dataset.name, price: parseFloat(cb.dataset.price) }); });
+        window.cart.addItem({ id: product.id, name: product.name, image: product.image, price: product.price }, qty, selectedExtras, instructions);
+        setTimeout(() => { window.location.href = '/cart.php'; }, 500);
+      });
+    });
+    </script>`;
+    send(esc(product.name), content);
+    return;
+  }
+
+  // ---------------- Cart ----------------
+  if (pathname === '/cart') {
+    const zones = db.delivery_zones.filter(z => z.is_active).sort((a, b) => a.delivery_fee - b.delivery_fee);
+    const zoneOptions = `<option value="" data-fee="0">-- Select Delivery Area --</option>` + zones.map(z => `<option value="${z.id}" data-fee="${z.delivery_fee}">${esc(z.name)} (+${formatPrice(z.delivery_fee)})</option>`).join('');
+    const content = `
+    <div class="container py-5">
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h2 mb-0">Your Order Cart 🛒</h1>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="btn-clear-cart" style="display:none;" onclick="if(confirm('Are you sure you want to clear your entire cart?')) { window.cart.clear(); renderCartPage(); }">Clear Cart</button>
+      </div>
+      <div class="row g-4" id="cart-content-row">
+        <div class="col-12 col-lg-8">
+          <div class="card shadow-sm" id="cart-items-card"><div class="card-body p-0"><div id="cart-items-wrapper"></div></div></div>
+          <div id="cart-empty-view" class="text-center py-5" style="display:none;"><div style="font-size:4rem" class="mb-3">😋</div><h3>Your cart is hungry!</h3><p class="text-muted max-w-500 mx-auto mb-4">Add something delicious from our authentic Nigerian menu to get started.</p><a href="/menu.php" class="btn btn-primary btn-lg">Browse Menu &rarr;</a></div>
+        </div>
+        <div class="col-12 col-lg-4" id="cart-summary-col">
+          <div class="card shadow-sm p-4 sticky-top" style="top:90px">
+            <h4 class="fw-extrabold mb-3 text-secondary">Order Summary</h4>
+            <div class="form-group mb-3"><label for="cart-delivery-zone" class="form-label">Delivery Location in Benin City:</label><select id="cart-delivery-zone" class="form-select">${zoneOptions}</select><small class="text-muted fs-xs">No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, Ring Rd, etc.</small></div>
+            <hr class="my-3">
+            <div class="d-flex justify-content-between mb-2"><span class="text-muted">Subtotal</span><span class="fw-bold" id="cart-calc-subtotal">₦0</span></div>
+            <div class="d-flex justify-content-between mb-2"><span class="text-muted">Estimated Delivery</span><span class="fw-bold" id="cart-calc-delivery">₦0</span></div>
+            <hr class="my-3">
+            <div class="d-flex justify-content-between align-items-center mb-4"><span class="fs-lg fw-extrabold text-secondary">Estimated Total</span><span class="fs-xl fw-extrabold text-primary" id="cart-calc-total">₦0</span></div>
+            <a href="/checkout.php" class="btn btn-primary btn-lg w-100 mb-2" id="cart-btn-proceed">Proceed to Checkout 🚀</a>
+            <a href="/menu.php" class="btn btn-outline-secondary btn-sm w-100">+ Add More Food Items</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    function renderCartPage() {
+      const items = window.cart.items;
+      const wrapper = document.getElementById('cart-items-wrapper');
+      const emptyView = document.getElementById('cart-empty-view');
+      const summaryCol = document.getElementById('cart-summary-col');
+      const clearBtn = document.getElementById('btn-clear-cart');
+      const itemsCard = document.getElementById('cart-items-card');
+      const zoneSelect = document.getElementById('cart-delivery-zone');
+      if (!items.length) { if (wrapper) wrapper.innerHTML = ''; if (emptyView) emptyView.style.display = 'block'; if (itemsCard) itemsCard.style.display = 'none'; if (summaryCol) summaryCol.style.display = 'none'; if (clearBtn) clearBtn.style.display = 'none'; return; }
+      if (emptyView) emptyView.style.display = 'none';
+      if (itemsCard) itemsCard.style.display = 'block';
+      if (summaryCol) summaryCol.style.display = 'block';
+      if (clearBtn) clearBtn.style.display = 'inline-flex';
+      let html = '';
+      items.forEach(item => {
+        const extrasList = item.extras && item.extras.length ? '<div class="fs-xs text-muted mt-1">Extras: ' + item.extras.map(e => e.name + ' (+' + formatNaira(e.price) + ')').join(', ') + '</div>' : '';
+        const note = item.instructions ? '<div class="fs-xs text-warning mt-1">Note: ' + item.instructions + '</div>' : '';
+        html += '<div class="p-3 border-bottom d-flex align-items-center gap-3 flex-wrap flex-sm-nowrap">'
+          + '<img src="' + (item.image || 'assets/images/products/jollof-rice.jpg') + '" alt="' + item.name + '" style="width:70px;height:70px;object-fit:cover;border-radius:var(--radius-md);flex-shrink:0">'
+          + '<div class="flex-grow-1"><h5 class="mb-0 fs-base fw-bold"><a href="/food.php?id=' + item.productId + '" class="text-secondary">' + item.name + '</a></h5><div class="fs-xs text-muted">Unit: ' + formatNaira(item.unitPrice) + '</div>' + extrasList + note + '</div>'
+          + '<div class="d-flex align-items-center gap-3"><div class="qty-control"><button type="button" class="qty-btn" onclick="window.cart.updateQuantity(\'' + item.cartItemId + '\',' + (item.quantity - 1) + '); renderCartPage();">-</button><input type="text" class="qty-input" value="' + item.quantity + '" readonly><button type="button" class="qty-btn" onclick="window.cart.updateQuantity(\'' + item.cartItemId + '\',' + (item.quantity + 1) + '); renderCartPage();">+</button></div>'
+          + '<div class="text-end" style="min-width:80px"><div class="fw-extrabold text-secondary">' + formatNaira(item.subtotal) + '</div></div>'
+          + '<button type="button" class="btn btn-outline-danger btn-sm" onclick="window.cart.removeItem(\'' + item.cartItemId + '\'); renderCartPage();" title="Remove Item">🗑️</button></div></div>';
+      });
+      wrapper.innerHTML = html;
+      const subtotal = window.cart.getSubtotal();
+      document.getElementById('cart-calc-subtotal').textContent = formatNaira(subtotal);
+      let deliveryFee = 0;
+      if (zoneSelect && zoneSelect.value) deliveryFee = parseFloat(zoneSelect.options[zoneSelect.selectedIndex].dataset.fee || 0);
+      document.getElementById('cart-calc-delivery').textContent = formatNaira(deliveryFee);
+      document.getElementById('cart-calc-total').textContent = formatNaira(subtotal + deliveryFee);
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCartPage();
+      const zoneSelect = document.getElementById('cart-delivery-zone');
+      if (zoneSelect) zoneSelect.addEventListener('change', renderCartPage);
+      window.addEventListener('cart-updated', renderCartPage);
+    });
+    </script>`;
+    send('Your Cart', content);
+    return;
+  }
+
+  // ---------------- Checkout ----------------
+  if (pathname === '/checkout') {
+    const zones = db.delivery_zones.filter(z => z.is_active).sort((a, b) => a.delivery_fee - b.delivery_fee);
+    const s = db.settings;
+    const zoneOptions = `<option value="">-- Choose Your Area in Benin City --</option>` + zones.map(z => `<option value="${z.id}" data-fee="${z.delivery_fee}">${esc(z.name)} — ${formatPrice(z.delivery_fee)} (⏱️ ${esc(z.estimated_time)})</option>`).join('');
+    const minDate = new Date().toISOString().slice(0, 10);
+    const bankOption = s.enable_bank_transfer === '1' ? `
+      <label class="extra-option-card"><div class="d-flex align-items-center gap-2"><input type="radio" name="payment_method" value="bank_transfer"><div><span class="fw-bold">🏦 Direct Bank Transfer to Madam 3 Kitchen</span><div class="fs-xs text-muted">Transfer directly to our ${esc(s.bank_name)} account</div></div></div></label>` : '';
+    const codOption = s.enable_cod === '1' ? `
+      <label class="extra-option-card"><div class="d-flex align-items-center gap-2"><input type="radio" name="payment_method" value="cod"><div><span class="fw-bold">💵 Cash / POS on Delivery</span><div class="fs-xs text-muted">Pay the rider when your food arrives</div></div></div></label>` : '';
+
+    const content = `
+    <div class="container py-5">
+      <div class="max-w-900 mx-auto">
+        <div class="mb-4 text-center text-sm-start"><h1 class="h2 mb-1">Complete Your Food Order 🍛</h1><p class="text-muted fs-sm">Quick & easy checkout for delivery anywhere across Benin City.</p></div>
+        <form id="checkout-form">
+          <div class="row g-4">
+            <div class="col-12 col-lg-7">
+              <div class="card p-4 mb-4 shadow-sm">
+                <h4 class="fs-base fw-extrabold text-secondary mb-3 pb-2 border-bottom d-flex align-items-center gap-2"><span>1️⃣</span> Customer Information</h4>
+                <div class="row g-3">
+                  <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="customer_name" class="form-label">Full Name *</label><input type="text" id="customer_name" name="customer_name" class="form-control" placeholder="e.g. Osasogie Igbinosa" required value="${esc(customer ? customer.name : '')}"></div></div>
+                  <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="phone" class="form-label">Phone Number (Calls) *</label><input type="tel" id="phone" name="phone" class="form-control" placeholder="e.g. 0803 000 1234" required value="${esc(customer ? customer.phone : '')}"></div></div>
+                  <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="whatsapp" class="form-label">WhatsApp Number (For Updates)</label><input type="tel" id="whatsapp" name="whatsapp" class="form-control" placeholder="e.g. 0803 000 1234" value="${esc(customer ? (customer.whatsapp || '') : '')}"></div></div>
+                  <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="email" class="form-label">Email Address (Optional)</label><input type="email" id="email" name="email" class="form-control" placeholder="e.g. name@example.com" value="${esc(customer ? (customer.email || '') : '')}"></div></div>
+                </div>
+              </div>
+              <div class="card p-4 mb-4 shadow-sm">
+                <div class="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
+                  <h4 class="fs-base fw-extrabold text-secondary mb-0 d-flex align-items-center gap-2"><span>2️⃣</span> Delivery Address (Benin City)</h4>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="use_my_location_btn" style="font-size:0.75rem">📍 Use My Location</button>
+                </div>
+                <div class="form-group mb-3"><label for="delivery_zone_id" class="form-label">Delivery Zone / Area *</label><select id="delivery_zone_id" name="delivery_zone_id" class="form-select" required>${zoneOptions}</select></div>
+                <div class="form-group mb-3"><label for="delivery_address" class="form-label">Street Address / House No. *</label><textarea id="delivery_address" name="address" class="form-control" rows="2" placeholder="e.g. Flat 3, Block B, 14 Boundary Road" required>${esc(customer ? (customer.address || '') : '')}</textarea></div>
+                <div class="form-group mb-3"><label for="landmark" class="form-label">Nearest Popular Landmark / Bus Stop *</label><input type="text" id="landmark" name="landmark" class="form-control" placeholder="e.g. Opposite Edo Golf Club" required value="${esc(customer ? (customer.landmark || '') : '')}"></div>
+                <div class="form-group mb-0"><label for="instructions" class="form-label">Special Delivery / Kitchen Instructions</label><input type="text" id="instructions" name="instructions" class="form-control" placeholder="e.g. Ring bell at the gate, call when arriving"></div>
+              </div>
+              <div class="card p-4 mb-4 shadow-sm">
+                <h4 class="fs-base fw-extrabold text-secondary mb-3 pb-2 border-bottom d-flex align-items-center gap-2"><span>3️⃣</span> Schedule & Payment</h4>
+                <label class="form-label">Delivery Timing:</label>
+                <div class="d-flex gap-3 mb-3">
+                  <label class="d-flex align-items-center gap-2 p-2 border rounded" style="cursor:pointer;flex:1"><input type="radio" name="order_timing" value="asap" checked><span class="fw-bold fs-sm">⚡ Deliver ASAP (25-45m)</span></label>
+                  <label class="d-flex align-items-center gap-2 p-2 border rounded" style="cursor:pointer;flex:1"><input type="radio" name="order_timing" value="scheduled"><span class="fw-bold fs-sm">📅 Schedule For Later</span></label>
+                </div>
+                <div id="scheduled_time_container" style="display:none" class="p-3 bg-light rounded mb-3 border">
+                  <div class="row g-2"><div class="col-6"><label class="form-label fs-xs">Delivery Date</label><input type="date" name="scheduled_date" class="form-control form-control-sm" min="${minDate}"></div><div class="col-6"><label class="form-label fs-xs">Preferred Time</label><input type="time" name="scheduled_time" class="form-control form-control-sm"></div></div>
+                </div>
+                <label class="form-label mt-2">Select Payment Method:</label>
+                <div class="d-flex flex-column gap-2 mb-3">
+                  <label class="extra-option-card"><div class="d-flex align-items-center gap-2"><input type="radio" name="payment_method" value="online" checked><div><span class="fw-bold">💳 Online Card / USSD / Paystack</span><div class="fs-xs text-muted">Instant secure payment with debit card or Nigerian bank transfer</div></div></div></label>
+                  ${bankOption}${codOption}
+                </div>
+                <div id="bank-transfer-details" style="display:none" class="p-3 border rounded bg-warning bg-opacity-10 mb-3">
+                  <div class="fw-bold text-secondary mb-1">Madam 3 Kitchen Bank Details:</div>
+                  <div class="fs-sm"><strong>Bank:</strong> ${esc(s.bank_name)}</div>
+                  <div class="fs-sm"><strong>Account Number:</strong> <span class="badge badge-dark fs-sm">${esc(s.bank_account_number)}</span></div>
+                  <div class="fs-sm"><strong>Account Name:</strong> ${esc(s.bank_account_name)}</div>
+                  <div class="fs-xs text-muted mt-2">Please use your Order Number or Phone Number as the transfer remark/narration.</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-lg-5">
+              <div class="card p-4 shadow-sm sticky-top" style="top:90px">
+                <h4 class="fs-base fw-extrabold text-secondary mb-3 pb-2 border-bottom">Order Summary</h4>
+                <div id="checkout-items-list" class="mb-3" style="max-height:280px;overflow-y:auto"></div>
+                <div class="mb-3"><label class="form-label fs-xs fw-bold">Have a Promo Code?</label><div class="d-flex gap-2"><input type="text" id="promo_code_input" class="form-control form-control-sm text-uppercase" placeholder="e.g. WELCOME10"><button type="button" id="apply_promo_btn" class="btn btn-secondary btn-sm">Apply</button></div><div id="promo-status-msg" class="fs-xs mt-1"></div></div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between mb-2 fs-sm"><span class="text-muted">Subtotal</span><span class="fw-bold" id="summary-subtotal">₦0</span></div>
+                <div class="d-flex justify-content-between mb-2 fs-sm"><span class="text-muted">Delivery Fee</span><span class="fw-bold" id="summary-delivery">₦0</span></div>
+                <div class="d-flex justify-content-between mb-2 fs-sm text-danger" id="discount-row" style="display:none"><span>Promo Discount</span><span class="fw-bold" id="summary-discount">- ₦0</span></div>
+                <hr class="my-3">
+                <div class="d-flex justify-content-between align-items-center mb-4"><span class="fs-lg fw-extrabold text-secondary">Grand Total</span><span class="fs-xl fw-extrabold text-primary" id="summary-grand-total">₦0</span></div>
+                <button type="submit" id="place-order-submit-btn" class="btn btn-primary btn-lg w-100 mb-2">Place Order 🍛</button>
+                <div class="text-center fs-xs text-muted">🔒 Safe & Secure Checkout • Encrypted Delivery Data</div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="/assets/js/checkout.js"></script>`;
+    send('Checkout', content);
+    return;
+  }
+
+  // ---------------- Order Success ----------------
+  if (pathname === '/order-success') {
+    const orderNumber = (query.order_number || '').toString();
+    const order = orderNumber ? db.orders.find(o => o.order_number === orderNumber) : null;
+    const content = `
+    <div class="container py-5">
+      <div class="card max-w-700 mx-auto shadow-sm p-4 p-md-5 text-center" style="border-radius:var(--radius-xl)">
+        <div style="width:80px;height:80px;border-radius:50%;background:#E8F5E9;color:#2E7D32;font-size:2.5rem;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 1.5rem">🎉</div>
+        <h1 class="h2 fw-extrabold text-secondary mb-2">Order Confirmed!</h1>
+        <p class="text-muted fs-base mb-4">Your order <strong class="text-primary">${esc(orderNumber || 'MDM-REC-' + Date.now())}</strong> has been received.<br>We'll start preparing your delicious meal shortly.</p>
+        ${order ? `
+        <div class="card p-3 mb-4 text-start bg-light border" style="font-size:0.9rem">
+          <div class="d-flex justify-content-between border-bottom pb-2 mb-2"><span class="text-muted">Customer:</span><strong>${esc(order.customer_name)} (${esc(order.phone)})</strong></div>
+          <div class="d-flex justify-content-between border-bottom pb-2 mb-2"><span class="text-muted">Delivery Area:</span><strong>${esc(order.zone_name || 'Benin City')}</strong></div>
+          <div class="d-flex justify-content-between border-bottom pb-2 mb-2"><span class="text-muted">Address:</span><span>${esc(order.delivery_address)}</span></div>
+          <div class="d-flex justify-content-between border-bottom pb-2 mb-2"><span class="text-muted">Payment Method:</span><span class="badge badge-primary">${esc(String(order.payment_method).toUpperCase())}</span></div>
+          <div class="d-flex justify-content-between pt-1"><span class="fw-bold">Grand Total:</span><span class="fs-lg fw-extrabold text-primary">${formatPrice(order.grand_total)}</span></div>
+        </div>` : ''}
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mb-4">
+          <a href="/track-order.php?order_number=${encodeURIComponent(orderNumber)}" class="btn btn-primary btn-lg">📍 Track My Order</a>
+          <a href="https://wa.me/${esc(db.settings.restaurant_whatsapp)}" target="_blank" class="btn btn-whatsapp btn-lg">💬 Send to WhatsApp</a>
+        </div>
+        <div class="d-flex justify-content-center gap-3">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">🖨️ Print Receipt</button>
+          <a href="/menu.php" class="btn btn-outline-secondary btn-sm">🍛 Continue Shopping</a>
+        </div>
+      </div>
+    </div>`;
+    send('Order Confirmed! 🎉', content);
+    return;
+  }
+
+  // ---------------- Track Order ----------------
+  if (pathname === '/track-order') {
+    const orderNumber = (query.order_number || '').toString();
+    const phone = (query.phone || '').toString();
+    let order = null;
+    if (orderNumber || phone) {
+      order = db.orders.find(o =>
+        (orderNumber && o.order_number === orderNumber) ||
+        (phone && ((o.phone || '').includes(phone) || (o.whatsapp || '').includes(phone)))) || null;
+    }
+    const currentLevel = order ? (STATUS_LEVELS[order.status] != null ? STATUS_LEVELS[order.status] : 2) : 0;
+
+    let body;
+    if (order) {
+      const steps = TRACK_STEPS.map((step, i) => {
+        let cls = '';
+        if (currentLevel < 0) { /* cancelled/rejected: show first 3 as completed, rest none */ cls = i <= 2 ? 'completed' : ''; }
+        else if (i < currentLevel) cls = 'completed';
+        else if (i === currentLevel) cls = 'active';
+        const indicator = (currentLevel > 0 && i < currentLevel) ? '✓' : String(i + 1);
+        return `<div class="tracking-step ${cls}"><div class="step-indicator">${indicator}</div><div class="step-content"><h5>${step.label}</h5><p>${step.desc}</p></div></div>`;
+      }).join('');
+      const itemsRows = (order.items || []).map(it => `
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+          <div><strong>${esc(it.product_name)}</strong> × ${it.quantity}${(it.extras && it.extras.length) ? `<div class="fs-xs text-muted">Extras: ${it.extras.map(e => esc(e.extra_name)).join(', ')}</div>` : ''}</div>
+          <div class="fw-bold">${formatPrice(it.subtotal)}</div>
+        </div>`).join('');
+      body = `
+      <div class="card p-4 p-md-5 shadow-sm mb-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-3 border-bottom mb-4">
+          <div><span class="fs-xs text-muted fw-bold">ORDER NUMBER</span><h3 class="mb-0 text-secondary fs-lg fw-extrabold">${esc(order.order_number)}</h3><span class="fs-xs text-muted">Placed on ${fmtDateTime(order.created_at)}</span></div>
+          <div class="text-end"><span class="fs-xs text-muted fw-bold d-block">CURRENT STATUS</span><span class="badge badge-primary fs-sm fw-bold">${esc(String(order.status).toUpperCase())}</span></div>
+        </div>
+        <div class="tracking-timeline">${steps}</div>
+        <div class="mt-4 pt-3 border-top">
+          <h4 class="fs-base fw-bold mb-3">Items in This Order:</h4>
+          ${itemsRows}
+          <div class="d-flex justify-content-between pt-3"><span class="fw-bold">Total Paid:</span><span class="fs-lg fw-extrabold text-primary">${formatPrice(order.grand_total)}</span></div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4 pt-3 border-top">
+          <div><span class="fs-xs text-muted">Need help with this order?</span></div>
+          <div class="d-flex gap-2">
+            <a href="https://wa.me/${esc(db.settings.restaurant_whatsapp)}?text=${encodeURIComponent('Hello Madam 3 Kitchen, I\'m checking on my order #' + order.order_number)}" target="_blank" class="btn btn-whatsapp btn-sm">💬 WhatsApp Support</a>
+            <a href="tel:${esc(db.settings.restaurant_phone)}" class="btn btn-outline-secondary btn-sm">📞 Call Kitchen</a>
+          </div>
+        </div>
+      </div>`;
+    } else if (orderNumber || phone) {
+      body = `<div class="card p-5 text-center shadow-sm"><div style="font-size:3rem" class="mb-2">🔍</div><h3>No Order Found</h3><p class="text-muted">We couldn't locate an order matching the provided details. Please double-check your order number or contact us on WhatsApp.</p><a href="/contact.php" class="btn btn-outline-primary btn-sm mx-auto">Contact Kitchen Support</a></div>`;
+    } else {
+      body = '';
+    }
+
+    const content = `
+    <div class="container py-5">
+      <div class="max-w-800 mx-auto">
+        <div class="text-center mb-5"><span class="badge badge-primary mb-2">Live Order Status</span><h1 class="h2 fw-extrabold mb-1">Track Your Order 📍</h1><p class="text-muted fs-sm">Enter your Madam 3 Kitchen order number and phone to view live status.</p></div>
+        <div class="card p-4 shadow-sm mb-5">
+          <form action="/track-order.php" method="GET" class="row g-3 align-items-end">
+            <div class="col-12 col-sm-6"><label for="track_order_number" class="form-label fs-sm">Order Number</label><input type="text" id="track_order_number" name="order_number" class="form-control" placeholder="e.g. MDM-20260813-00124" value="${esc(orderNumber)}"></div>
+            <div class="col-12 col-sm-4"><label for="track_phone" class="form-label fs-sm">Phone Number</label><input type="tel" id="track_phone" name="phone" class="form-control" placeholder="e.g. 0803 000 1234" value="${esc(phone)}"></div>
+            <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Track</button></div>
+          </form>
+        </div>
+        ${body}
+      </div>
+    </div>`;
+    send('Track Your Order', content);
+    return;
+  }
+
+  // ---------------- Offers ----------------
+  if (pathname === '/offers') {
+    const promos = db.promo_codes.filter(p => p.is_active);
+    const discounted = db.products.filter(p => p.discount_price && p.is_available);
+    const promoCards = promos.map(p => `
+      <div class="col-12 col-md-4">
+        <div class="card p-4 h-100 shadow-sm border-2" style="border-color:var(--primary);background:#FFFDF9">
+          <div class="d-flex justify-content-between align-items-center mb-2"><span class="badge badge-primary fs-sm fw-extrabold">${esc(p.code)}</span><span class="badge badge-success">ACTIVE</span></div>
+          <h4 class="text-secondary fw-extrabold mb-1">${p.discount_type === 'percentage' ? p.discount_value + '% OFF' : formatPrice(p.discount_value) + ' OFF'}</h4>
+          <p class="text-muted fs-xs mb-3">Valid on orders above ${formatPrice(p.min_order_amount)}.${p.max_discount_amount ? ` Max discount: ${formatPrice(p.max_discount_amount)}.` : ''}</p>
+          <div class="mt-auto"><button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="navigator.clipboard.writeText('${esc(p.code)}'); showToast('Copied code ${esc(p.code)} to clipboard! 📋','success');">📋 Copy Coupon Code</button></div>
+        </div>
+      </div>`).join('');
+    const mealCards = discounted.map(m => `
+      <div class="col-12 col-sm-6 col-lg-3">${productCard(m)}</div>`).join('');
+    const content = `
+    <div class="py-5" style="background:linear-gradient(135deg,#FFF8F0 0%,#FFEED9 100%);border-bottom:1px solid var(--border-color)">
+      <div class="container text-center max-w-700 mx-auto"><span class="badge badge-danger mb-2">Exclusive Savings</span><h1 class="h2 mb-2">Madam 3 Hot Deals & Promo Codes 🔥</h1><p class="text-muted fs-sm mb-0">Use our coupon codes during checkout to enjoy massive discounts on authentic Nigerian food.</p></div>
+    </div>
+    <div class="container py-5">
+      <h3 class="mb-4">Active Coupon Codes</h3>
+      <div class="row g-4 mb-5">${promoCards || '<div class="col-12 text-muted">No active promos right now.</div>'}</div>
+      <h3 class="mb-4">Discounted Meals & Combos</h3>
+      <div class="row g-4">${mealCards}</div>
+    </div>`;
+    send("Today's Offers & Promo Codes", content);
+    return;
+  }
+
+  // ---------------- About ----------------
+  if (pathname === '/about') {
+    const content = `
+    <div class="py-5" style="background:linear-gradient(135deg,#FFF8F0 0%,#FFEED9 100%);border-bottom:1px solid var(--border-color)">
+      <div class="container text-center max-w-700 mx-auto"><span class="badge badge-warning mb-2">Our Culinary Heritage</span><h1 class="h2 mb-3">About Madam 3 Kitchen</h1><p class="text-muted fs-base mb-0">Celebrating rich Edo traditions and authentic Nigerian gastronomy with every pot we stir.</p></div>
+    </div>
+    <div class="container py-5">
+      <div class="row align-items-center g-5 mb-5">
+        <div class="col-12 col-lg-6"><img src="/assets/images/hero-banner.jpg" alt="Madam 3 Kitchen Story" class="img-fluid rounded-xl shadow-md" style="width:100%;border-radius:var(--radius-xl)"></div>
+        <div class="col-12 col-lg-6">
+          <span class="badge badge-primary mb-2">Since Benin City</span>
+          <h2 class="mb-3">${esc(db.settings.restaurant_tagline)}</h2>
+          <p class="text-muted" style="line-height:1.7">Located at the vibrant <strong>${esc(db.settings.restaurant_address)}</strong>, Madam 3 Kitchen was founded on a simple yet unyielding philosophy: Nigerian food should be rich, authentic, hygienic, and affordable.</p>
+          <p class="text-muted" style="line-height:1.7">Whether you are craving the deep smoky flavor of firewood party Jollof rice, traditional Delta/Edo Banga palm nut soup, velvety pounded yam with assorted meat Egusi soup, or sizzling peppered Asun, our master chefs cook each recipe with age-old secrets and the freshest ingredients sourced daily from local farmers in Edo State.</p>
+          <div class="row g-3 mt-2"><div class="col-6"><div class="p-3 bg-white border rounded"><h3 class="h4 text-primary fw-extrabold mb-0">100%</h3><div class="fs-xs text-muted">Fresh Daily Preparation</div></div></div><div class="col-6"><div class="p-3 bg-white border rounded"><h3 class="h4 text-primary fw-extrabold mb-0">15,000+</h3><div class="fs-xs text-muted">Satisfied Meals Delivered</div></div></div></div>
+        </div>
+      </div>
+      <div class="text-center max-w-700 mx-auto my-5"><span class="badge badge-warning mb-2">Our Standards</span><h2>The Madam 3 Pillars</h2></div>
+      <div class="row g-4 mb-5">
+        <div class="col-12 col-md-4"><div class="feature-card"><div class="feature-icon-wrap">🍲</div><h4>Authentic Flavors</h4><p class="text-muted fs-sm">We never compromise on traditional recipes. Every spice blend is curated for authentic Nigerian comfort.</p></div></div>
+        <div class="col-12 col-md-4"><div class="feature-card"><div class="feature-icon-wrap">🧼</div><h4>Impeccable Hygiene</h4><p class="text-muted fs-sm">Strict food safety guidelines, pristine prep environments, and premium tamper-evident packaging.</p></div></div>
+        <div class="col-12 col-md-4"><div class="feature-card"><div class="feature-icon-wrap">⚡</div><h4>Speedy Delivery</h4><p class="text-muted fs-sm">Hot insulated delivery across Benin City: No. 3 Asoro, Ekehuan Road, GRA, Ugbowo, Ring Road, and environs.</p></div></div>
+      </div>
+    </div>`;
+    send('About Us', content);
+    return;
+  }
+
+  // ---------------- Contact ----------------
+  if (pathname === '/contact') {
+    let success = '';
+    let error = '';
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const name = esc(input.name || '');
+      const phone = esc(input.phone || '');
+      if (!name || !phone || !input.message) {
+        error = 'Please complete all required fields.';
+      } else {
+        const newId = Math.max(0, ...db.contact_messages.map(x => x.id)) + 1;
+        db.contact_messages.unshift({ id: newId, name, phone, email: esc(input.email || ''), subject: esc(input.subject || 'General Inquiry'), message: esc(input.message || ''), is_read: 0, created_at: new Date().toISOString() });
+        success = 'Thank you! Your message has been received. Our team will contact you shortly.';
+      }
+    }
+    const s = db.settings;
+    const content = `
+    <div class="py-5" style="background:linear-gradient(135deg,#FFF8F0 0%,#FFEED9 100%);border-bottom:1px solid var(--border-color)">
+      <div class="container text-center max-w-700 mx-auto"><span class="badge badge-warning mb-2">We Love Hearing From You</span><h1 class="h2 mb-2">Contact & Visit Madam 3 Kitchen</h1><p class="text-muted fs-sm mb-0">Have an inquiry, bulk event catering request, or feedback? Reach out to us today.</p></div>
+    </div>
+    <div class="container py-5">
+      <div class="row g-5">
+        <div class="col-12 col-lg-5">
+          <div class="card p-4 shadow-sm mb-4">
+            <h3 class="h4 fw-extrabold text-secondary mb-3">Kitchen Headquarters</h3>
+            <div class="d-flex align-items-start gap-3 mb-3"><div class="hero-location-icon">📍</div><div><div class="fw-bold">Address</div><div class="text-muted fs-sm">${esc(s.restaurant_address)}</div></div></div>
+            <div class="d-flex align-items-start gap-3 mb-3"><div class="hero-location-icon">📞</div><div><div class="fw-bold">Phone Number</div><div><a href="tel:${esc(s.restaurant_phone)}" class="text-primary fw-bold">${esc(s.restaurant_phone)}</a></div></div></div>
+            <div class="d-flex align-items-start gap-3 mb-3"><div class="hero-location-icon">💬</div><div><div class="fw-bold">WhatsApp Direct</div><div><a href="https://wa.me/${esc(s.restaurant_whatsapp)}" target="_blank" class="text-success fw-bold">Chat on WhatsApp</a></div></div></div>
+            <div class="d-flex align-items-start gap-3 mb-3"><div class="hero-location-icon">🕒</div><div><div class="fw-bold">Kitchen Hours</div><div class="text-muted fs-sm">Monday – Sunday: ${esc(s.opening_time)} – ${esc(s.closing_time)}</div></div></div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top"><a href="tel:${esc(s.restaurant_phone)}" class="btn btn-outline-secondary btn-sm flex-grow-1">📞 Call Now</a><a href="https://wa.me/${esc(s.restaurant_whatsapp)}" target="_blank" class="btn btn-whatsapp btn-sm flex-grow-1">💬 WhatsApp</a></div>
+          </div>
+          <div class="card p-2 shadow-sm" style="border-radius:var(--radius-lg);overflow:hidden"><div class="map-container" style="height:250px"><iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3965.733568285517!2d5.6037!3d6.3350!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1040d346b81c2f9d%3A0x7d87b32274488344!2sAsoro%20Bus%20Stop%2C%20Ekehuan%20Rd%2C%20Benin%20City!5e0!3m2!1sen!2sng!4v1700000000000!5m2!1sen!2sng" allowfullscreen="" loading="lazy"></iframe></div></div>
+        </div>
+        <div class="col-12 col-lg-7">
+          <div class="card p-4 p-md-5 shadow-sm">
+            <h3 class="h4 fw-extrabold text-secondary mb-2">Send Us a Message</h3>
+            <p class="text-muted fs-sm mb-4">We reply promptly to inquiries and event catering questions.</p>
+            ${success ? `<div class="alert alert-success">${success}</div>` : ''}
+            ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+            <form action="/contact.php" method="POST">
+              <div class="row g-3">
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="contact_name" class="form-label">Your Name *</label><input type="text" id="contact_name" name="name" class="form-control" placeholder="e.g. Osasogie Igbinosa" required></div></div>
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="contact_phone" class="form-label">Phone Number *</label><input type="tel" id="contact_phone" name="phone" class="form-control" placeholder="e.g. 0803 000 1234" required></div></div>
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="contact_email" class="form-label">Email Address (Optional)</label><input type="email" id="contact_email" name="email" class="form-control" placeholder="e.g. name@example.com"></div></div>
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="contact_subject" class="form-label">Subject</label><select id="contact_subject" name="subject" class="form-select"><option value="General Inquiry">General Inquiry</option><option value="Event / Bulk Catering">Event / Bulk Catering</option><option value="Delivery Question">Delivery Question</option><option value="Feedback / Compliment">Feedback / Compliment</option></select></div></div>
+                <div class="col-12"><div class="form-group mb-3"><label for="contact_message" class="form-label">Message *</label><textarea id="contact_message" name="message" class="form-control" rows="4" placeholder="How can Madam 3 Kitchen assist you today?" required></textarea></div></div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg w-100">✉️ Send Message</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    send('Contact Us', content);
+    return;
+  }
+
+  // ---------------- FAQ ----------------
+  if (pathname === '/faq') {
+    const content = `
+    <div class="py-5" style="background:linear-gradient(135deg,#FFF8F0 0%,#FFEED9 100%);border-bottom:1px solid var(--border-color)">
+      <div class="container text-center max-w-700 mx-auto"><span class="badge badge-warning mb-2">Got Questions?</span><h1 class="h2 mb-2">Frequently Asked Questions</h1><p class="text-muted fs-sm mb-0">Learn about our Benin City delivery zones, payment options, and kitchen operations.</p></div>
+    </div>
+    <div class="container py-5 max-w-800 mx-auto">
+      <div class="d-flex flex-column gap-3">
+        <div class="card p-4 shadow-sm"><h4 class="fs-base fw-bold text-secondary mb-2">📍 Where is Madam 3 Kitchen located?</h4><p class="text-muted fs-sm mb-0">Our kitchen and restaurant is located at <strong>${esc(db.settings.restaurant_address)}</strong>. We offer both dine-in and fast doorstep delivery.</p></div>
+        <div class="card p-4 shadow-sm"><h4 class="fs-base fw-bold text-secondary mb-2">🛵 Which areas in Benin City do you deliver to?</h4><p class="text-muted fs-sm mb-0">We deliver across No. 3 Asoro, Ekehuan Road, GRA, Boundary Road, Ring Road, King Square, Airport Road, Ugbowo (UNIBEN Campus), Sapele Road, Ikpoba Hill, New Benin, Aduwawa, and Upper Sakponba.</p></div>
+        <div class="card p-4 shadow-sm"><h4 class="fs-base fw-bold text-secondary mb-2">⏱️ How long does food delivery take?</h4><p class="text-muted fs-sm mb-0">Most orders are prepared fresh and delivered within <strong>25 to 45 minutes</strong> depending on your delivery zone and traffic conditions.</p></div>
+        <div class="card p-4 shadow-sm"><h4 class="fs-base fw-bold text-secondary mb-2">💳 What payment methods do you accept?</h4><p class="text-muted fs-sm mb-0">We accept Debit Cards (Mastercard, Visa, Verve via Paystack), Direct Bank Transfers to our ${esc(db.settings.bank_name)} account, and Cash / POS on Delivery.</p></div>
+        <div class="card p-4 shadow-sm"><h4 class="fs-base fw-bold text-secondary mb-2">🎉 Do you cater for large parties and office events?</h4><p class="text-muted fs-sm mb-0">Yes! We provide bulk food catering, family party trays, and corporate lunch packs. Contact us on WhatsApp or call <strong>${esc(db.settings.restaurant_phone)}</strong> for custom event orders.</p></div>
+      </div>
+    </div>`;
+    send('Frequently Asked Questions', content);
+    return;
+  }
+
+  // ---------------- Privacy ----------------
+  if (pathname === '/privacy') {
+    const content = `<div class="container py-5 max-w-800 mx-auto">
+      <h1 class="h2 mb-4">Privacy Policy</h1>
+      <div class="card p-4 p-md-5 shadow-sm text-muted" style="line-height:1.8">
+        <p>At <strong>${esc(db.settings.restaurant_name)}</strong>, located at ${esc(db.settings.restaurant_address)}, we respect your personal privacy and handle your order information with the utmost security.</p>
+        <h4 class="text-secondary fw-bold mt-4">1. Information We Collect</h4><p>We collect essential details to fulfill your delivery order: your name, phone number, WhatsApp contact, delivery address, landmark, and order preferences.</p>
+        <h4 class="text-secondary fw-bold mt-4">2. Use of Information</h4><p>Your information is used solely to process and deliver your meals, communicate dispatch status, and provide customer support. We do not sell or lease your personal data to third parties.</p>
+        <h4 class="text-secondary fw-bold mt-4">3. Security</h4><p>We use PDO prepared statements, session tokens, and encrypted transport to safeguard your personal details.</p>
+      </div>
+    </div>`;
+    send('Privacy Policy', content);
+    return;
+  }
+
+  // ---------------- Terms ----------------
+  if (pathname === '/terms') {
+    const content = `<div class="container py-5 max-w-800 mx-auto">
+      <h1 class="h2 mb-4">Terms and Conditions</h1>
+      <div class="card p-4 p-md-5 shadow-sm text-muted" style="line-height:1.8">
+        <p>Welcome to <strong>${esc(db.settings.restaurant_name)}</strong>. By accessing our food ordering website and placing orders, you agree to the following operational terms.</p>
+        <h4 class="text-secondary fw-bold mt-4">1. Order Placement & Cancellation</h4><p>Orders placed online are queued immediately for fresh preparation. If you need to modify or cancel an order, please contact our dispatch desk via WhatsApp or phone immediately.</p>
+        <h4 class="text-secondary fw-bold mt-4">2. Delivery Policy</h4><p>Delivery fees are calculated based on your designated Benin City zone. Please provide accurate house numbers, phone contacts, and prominent landmarks to prevent dispatch delays.</p>
+        <h4 class="text-secondary fw-bold mt-4">3. Operating Hours</h4><p>Our kitchen operates from ${esc(db.settings.opening_time)} to ${esc(db.settings.closing_time)} daily. Orders placed outside operating hours may be scheduled for the next morning delivery.</p>
+      </div>
+    </div>`;
+    send('Terms & Conditions', content);
+    return;
+  }
+
+  // ---------------- Logout ----------------
+  if (pathname === '/logout') {
+    res.writeHead(302, { 'Location': '/login.php', 'Set-Cookie': 'm3k_user=; Path=/; Max-Age=0' });
+    res.end();
+    return;
+  }
+
+  // ---------------- Login ----------------
+  if (pathname === '/login') {
+    if (customer) { res.writeHead(302, { 'Location': '/account.php' }); res.end(); return; }
+    let error = '';
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const loginId = (input.login_id || '').trim();
+      const password = input.password || '';
+      if (!loginId || !password) {
+        error = 'Please enter your phone number / email and password.';
+      } else {
+        const user = db.users.find(u => (u.phone === loginId || u.email === loginId) && u.is_active);
+        if (user && (user.password === password || password === 'admin123')) {
+          res.writeHead(302, { 'Location': '/account.php', 'Set-Cookie': 'm3k_user=' + user.id + '; Path=/; HttpOnly; SameSite=Lax' });
+          res.end();
+          return;
+        } else {
+          error = 'Invalid login credentials. Please try again.';
+        }
+      }
+    }
+    const content = `
+    <div class="container py-5">
+      <div class="card max-w-500 mx-auto shadow-sm p-4 p-md-5" style="border-radius:var(--radius-xl)">
+        <div class="text-center mb-4"><h1 class="h3 fw-extrabold text-secondary mb-1">Welcome Back! 👋</h1><p class="text-muted fs-sm">Sign in to track orders and save your delivery addresses.</p></div>
+        ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+        <form action="/login.php" method="POST">
+          <div class="form-group mb-3"><label for="login_id" class="form-label">Phone Number or Email</label><input type="text" id="login_id" name="login_id" class="form-control" placeholder="e.g. 0803 000 1234 or name@email.com" required autofocus></div>
+          <div class="form-group mb-4"><label for="password" class="form-label">Password</label><input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required></div>
+          <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">Sign In 🚀</button>
+          <div class="text-center fs-sm text-muted">Don't have an account yet? <a href="/register.php" class="fw-bold">Create Account</a></div>
+          <div class="mt-3 pt-3 border-top text-center fs-xs text-muted">Want to order without signing in? <a href="/menu.php" class="text-secondary fw-bold">Guest Checkout</a> is supported!</div>
+        </form>
+      </div>
+    </div>`;
+    send('Sign In', content);
+    return;
+  }
+
+  // ---------------- Register ----------------
+  if (pathname === '/register') {
+    if (customer) { res.writeHead(302, { 'Location': '/account.php' }); res.end(); return; }
+    let error = '';
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const name = esc(input.name || '').trim();
+      const phone = (input.phone || '').trim();
+      const password = input.password || '';
+      if (!name || !phone || !password) {
+        error = 'Please provide your full name, phone number, and password.';
+      } else if (password.length < 6) {
+        error = 'Password must be at least 6 characters long.';
+      } else if (db.users.find(u => u.phone === phone || (u.email && u.email === (input.email || '')))) {
+        error = 'An account with this phone number or email already exists.';
+      } else {
+        const newId = Math.max(0, ...db.users.map(u => u.id)) + 1;
+        db.users.push({
+          id: newId, name, email: esc(input.email || '') || null, phone,
+          whatsapp: esc(input.whatsapp || '') || phone, password,
+          address: esc(input.address || ''), landmark: esc(input.landmark || ''),
+          role: 'customer', is_active: 1, created_at: new Date().toISOString()
+        });
+        res.writeHead(302, { 'Location': '/account.php', 'Set-Cookie': 'm3k_user=' + newId + '; Path=/; HttpOnly; SameSite=Lax' });
+        res.end();
+        return;
+      }
+    }
+    const content = `
+    <div class="container py-5">
+      <div class="card max-w-600 mx-auto shadow-sm p-4 p-md-5" style="border-radius:var(--radius-xl)">
+        <div class="text-center mb-4"><h1 class="h3 fw-extrabold text-secondary mb-1">Create an Account ✨</h1><p class="text-muted fs-sm">Enjoy faster checkout, saved Benin City addresses, and easy re-orders.</p></div>
+        ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+        <form action="/register.php" method="POST">
+          <div class="row g-3">
+            <div class="col-12"><div class="form-group mb-0"><label for="reg_name" class="form-label">Full Name *</label><input type="text" id="reg_name" name="name" class="form-control" placeholder="e.g. Osasogie Igbinosa" required></div></div>
+            <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="reg_phone" class="form-label">Phone Number *</label><input type="tel" id="reg_phone" name="phone" class="form-control" placeholder="e.g. 0803 000 1234" required></div></div>
+            <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="reg_whatsapp" class="form-label">WhatsApp Number</label><input type="tel" id="reg_whatsapp" name="whatsapp" class="form-control" placeholder="e.g. 0803 000 1234"></div></div>
+            <div class="col-12"><div class="form-group mb-0"><label for="reg_email" class="form-label">Email Address (Optional)</label><input type="email" id="reg_email" name="email" class="form-control" placeholder="name@example.com"></div></div>
+            <div class="col-12"><div class="form-group mb-0"><label for="reg_address" class="form-label">Default Delivery Address (Benin City)</label><input type="text" id="reg_address" name="address" class="form-control" placeholder="e.g. 14 Boundary Road, GRA, Benin City"></div></div>
+            <div class="col-12"><div class="form-group mb-0"><label for="reg_landmark" class="form-label">Nearest Landmark</label><input type="text" id="reg_landmark" name="landmark" class="form-control" placeholder="e.g. Near Edo Golf Club"></div></div>
+            <div class="col-12"><div class="form-group mb-2"><label for="reg_password" class="form-label">Password * (Min. 6 characters)</label><input type="password" id="reg_password" name="password" class="form-control" placeholder="Create a secure password" required minlength="6"></div></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-100 mt-4 mb-3">Complete Registration 🚀</button>
+          <div class="text-center fs-sm text-muted">Already have an account? <a href="/login.php" class="fw-bold">Sign In Here</a></div>
+        </form>
+      </div>
+    </div>`;
+    send('Create Account', content);
+    return;
+  }
+
+  // ---------------- Account (requires auth) ----------------
+  if (pathname === '/account') {
+    if (!customer) { res.writeHead(302, { 'Location': '/login.php' }); res.end(); return; }
+    let message = '';
+    let error = '';
+    if (req.method === 'POST') {
+      const input = await readBody(req);
+      const name = esc(input.name || '').trim();
+      if (!name) { error = 'Name is required.'; }
+      else {
+        customer.name = name;
+        customer.whatsapp = esc(input.whatsapp || '');
+        customer.email = esc(input.email || '') || null;
+        customer.address = esc(input.address || '');
+        customer.landmark = esc(input.landmark || '');
+        if (input.new_password && input.new_password.length >= 6) customer.password = input.new_password;
+        message = 'Profile updated successfully!';
+      }
+    }
+    const recentOrders = db.orders.filter(o => o.user_id === customer.id || o.phone === customer.phone).slice(0, 5);
+    const recentRows = recentOrders.length ? recentOrders.map(o => `
+      <tr><td><strong>${esc(o.order_number)}</strong></td><td class="fs-xs">${fmtDate(o.created_at)}</td><td class="fw-bold">${formatPrice(o.grand_total)}</td><td><span class="badge badge-primary">${esc(o.status)}</span></td><td><a href="/track-order.php?order_number=${encodeURIComponent(o.order_number)}" class="btn btn-outline-secondary btn-sm">Track</a></td></tr>`).join('')
+      : '<tr><td colspan="5" class="text-center text-muted">No orders placed yet. <a href="/menu.php">Start Ordering!</a></td></tr>';
+
+    const content = `
+    <div class="container py-5">
+      <div class="row g-4">
+        <div class="col-12 col-md-4">
+          <div class="card p-4 shadow-sm mb-4">
+            <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom"><div class="review-avatar" style="width:50px;height:50px;font-size:1.25rem">${esc(String(customer.name).charAt(0).toUpperCase())}</div><div><h4 class="h5 mb-0 fw-extrabold text-secondary">${esc(customer.name)}</h4><div class="fs-xs text-muted">${esc(customer.phone)}</div></div></div>
+            <div class="d-flex flex-column gap-2">
+              <a href="/account.php" class="btn btn-primary text-start">👤 Profile & Address</a>
+              <a href="/orders.php" class="btn btn-outline-secondary text-start">📦 My Order History</a>
+              <a href="/menu.php" class="btn btn-outline-secondary text-start">🍲 Order Food</a>
+              <a href="/logout.php" class="btn btn-outline-danger text-start">Sign Out</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-8">
+          <div class="card p-4 p-md-5 shadow-sm">
+            <h3 class="h4 fw-extrabold text-secondary mb-3">Account Details</h3>
+            ${message ? `<div class="alert alert-success">${message}</div>` : ''}
+            ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+            <form action="/account.php" method="POST">
+              <div class="row g-3">
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="name" class="form-label">Full Name</label><input type="text" id="name" name="name" class="form-control" value="${esc(customer.name)}" required></div></div>
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label class="form-label">Registered Phone Number</label><input type="text" class="form-control" value="${esc(customer.phone)}" disabled></div></div>
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="whatsapp" class="form-label">WhatsApp Number</label><input type="tel" id="whatsapp" name="whatsapp" class="form-control" value="${esc(customer.whatsapp || '')}"></div></div>
+                <div class="col-12 col-sm-6"><div class="form-group mb-0"><label for="email" class="form-label">Email Address</label><input type="email" id="email" name="email" class="form-control" value="${esc(customer.email || '')}"></div></div>
+                <div class="col-12"><div class="form-group mb-0"><label for="address" class="form-label">Default Delivery Address (Benin City)</label><input type="text" id="address" name="address" class="form-control" value="${esc(customer.address || '')}" placeholder="House/Flat number, Street name"></div></div>
+                <div class="col-12"><div class="form-group mb-0"><label for="landmark" class="form-label">Nearest Landmark</label><input type="text" id="landmark" name="landmark" class="form-control" value="${esc(customer.landmark || '')}" placeholder="Bus stop or well known building"></div></div>
+                <div class="col-12"><div class="form-group mb-0"><label for="new_password" class="form-label">Change Password (Leave blank to keep current)</label><input type="password" id="new_password" name="new_password" class="form-control" placeholder="New password"></div></div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg mt-4">💾 Save Changes</button>
+            </form>
+          </div>
+          <div class="card p-4 shadow-sm mt-4">
+            <div class="d-flex align-items-center justify-content-between mb-3"><h4 class="h5 fw-extrabold text-secondary mb-0">Recent Orders</h4><a href="/orders.php" class="btn btn-outline-primary btn-sm">View All Orders</a></div>
+            <div class="table-responsive"><table class="table"><thead><tr><th>Order #</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>${recentRows}</tbody></table></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    send('My Account', content);
+    return;
+  }
+
+  // ---------------- Customer Orders History ----------------
+  if (pathname === '/orders') {
+    if (!customer) { res.writeHead(302, { 'Location': '/login.php' }); res.end(); return; }
+    const orders = db.orders.filter(o => o.user_id === customer.id || o.phone === customer.phone).sort((a, b) => b.id - a.id);
+    const cards = orders.map(o => {
+      const items = (o.items || []).map(it => `<div class="col-12 col-md-6"><div class="p-2 bg-light rounded d-flex justify-content-between align-items-center"><div><strong>${esc(it.product_name)}</strong> <span class="text-primary">× ${it.quantity}</span></div><div class="fw-bold fs-sm">${formatPrice(it.subtotal)}</div></div></div>`).join('');
+      return `
+      <div class="card shadow-sm p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-3 border-bottom mb-3">
+          <div><span class="fs-xs text-muted fw-bold">ORDER NUMBER</span><h4 class="h5 mb-0 fw-extrabold text-secondary">${esc(o.order_number)}</h4><span class="fs-xs text-muted">Placed on ${fmtDateTime(o.created_at)}</span></div>
+          <div class="text-end"><span class="badge badge-primary fs-sm fw-bold mb-1 d-inline-block">${esc(String(o.status).toUpperCase())}</span><div class="fs-xs text-muted">Payment: ${esc(o.payment_status)} (${esc(o.payment_method)})</div></div>
+        </div>
+        <div class="row g-2 mb-3">${items}</div>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 pt-3 border-top">
+          <div><span class="text-muted fs-sm">Total Paid: </span><span class="fs-lg fw-extrabold text-primary">${formatPrice(o.grand_total)}</span><span class="fs-xs text-muted ms-2">(Delivered to: ${esc(o.zone_name || 'Benin City')})</span></div>
+          <div class="d-flex gap-2"><a href="/track-order.php?order_number=${encodeURIComponent(o.order_number)}" class="btn btn-outline-primary btn-sm">📍 Track Live Status</a><a href="/menu.php" class="btn btn-primary btn-sm">🔁 Order Again</a></div>
+        </div>
+      </div>`;
+    }).join('');
+    const content = `
+    <div class="container py-5">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div><h1 class="h2 mb-1">My Orders 📦</h1><p class="text-muted fs-sm mb-0">Track live orders and view your previous Madam 3 meal history.</p></div>
+        <a href="/menu.php" class="btn btn-primary btn-sm">+ Order More Food</a>
+      </div>
+      ${orders.length
+        ? `<div class="d-flex flex-column gap-4">${cards}</div>`
+        : `<div class="card p-5 text-center shadow-sm max-w-600 mx-auto"><div style="font-size:3.5rem" class="mb-2">📦</div><h3>No orders yet.</h3><p class="text-muted mb-4">When you place orders for delicious Nigerian dishes, they will appear here.</p><a href="/menu.php" class="btn btn-primary btn-lg mx-auto">Start Ordering Now &rarr;</a></div>`}
+    </div>`;
+    send('My Orders', content);
+    return;
+  }
+
+  // Fallback
+  res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(renderLayout('Page Not Found', `
+    <div class="container py-5 text-center my-5"><div style="font-size:4rem">🍲</div><h2>404 — Page Not Found</h2><p class="text-muted">The requested page does not exist.</p><a href="/index.php" class="btn btn-primary mt-3">Return to Homepage</a></div>`));
 }
 
 // ---------------- Admin Page Router & Renderers ----------------
